@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Párty Hra s Databází</title>
+  <title>Párty Hra s Místnostmi</title>
   <style>
     * {
       box-sizing: border-box;
@@ -31,6 +31,18 @@
       text-align: center;
       margin-top: 0;
       color: #1c1e21;
+    }
+
+    .room-badge {
+      text-align: center;
+      background: #e7f3ff;
+      color: #007bff;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 14px;
+      margin-bottom: 16px;
+      display: none;
     }
 
     input, select, button {
@@ -137,14 +149,26 @@
 
   <div class="container">
     
-    <!-- HLAVNÍ MENU -->
-    <div id="sec-menu" class="section active">
-      <h1>🎮 Párty Hra</h1>
-      <button class="btn-success" onclick="showSection('sec-game')">▶️ Spustit hru</button>
-      <button class="btn-secondary" onclick="showSection('sec-add')">➕ Přidat úkoly</button>
+    <!-- 1. VÝBĚR MÍSTNOSTI (LOBBY) -->
+    <div id="sec-room" class="section active">
+      <h1>🏠 Párty Hra</h1>
+      <p style="text-align: center; color: #666; font-size: 14px;">Zadej kód nebo název místnosti pro připojení nebo vytvoření nové.</p>
+      
+      <input type="text" id="roomInput" placeholder="Název místnosti (např. party123)">
+      <button class="btn-success" onclick="joinRoom()">Vstoupit / Vytvořit místnost</button>
     </div>
 
-    <!-- HRA -->
+    <!-- 2. HLAVNÍ MENU MÍSTNOSTI -->
+    <div id="sec-menu" class="section">
+      <h1>🎮 Párty Hra</h1>
+      <div id="activeRoomBadge" class="room-badge">Místnost: -</div>
+      
+      <button class="btn-success" onclick="showSection('sec-game')">▶️ Spustit hru</button>
+      <button class="btn-secondary" onclick="showSection('sec-add')">➕ Přidat úkoly</button>
+      <button class="btn-secondary" style="background-color: #dc3545;" onclick="leaveRoom()">🚪 Opustit místnost</button>
+    </div>
+
+    <!-- 3. HRA -->
     <div id="sec-game" class="section">
       <h2>Vyber kategorii</h2>
       
@@ -161,10 +185,10 @@
         <div id="hintText" class="hint">Klikni pro skrytí a odpočet</div>
       </div>
 
-      <button class="btn-secondary" onclick="showSection('sec-menu')">⬅️ Hlavní menu</button>
+      <button class="btn-secondary" onclick="showSection('sec-menu')">⬅️ Menu místnosti</button>
     </div>
 
-    <!-- PŘIDÁNÍ ÚKOLU -->
+    <!-- 4. PŘIDÁNÍ ÚKOLU -->
     <div id="sec-add" class="section">
       <h2>Přidat nový úkol</h2>
       
@@ -176,8 +200,8 @@
       </select>
 
       <input type="text" id="taskInput" placeholder="Zadej text úkolu...">
-      <button class="btn-success" onclick="addTask()">Uložit úkol</button>
-      <button class="btn-secondary" onclick="showSection('sec-menu')">⬅️ Hlavní menu</button>
+      <button class="btn-success" onclick="addTask()">Uložit úkol do místnosti</button>
+      <button class="btn-secondary" onclick="showSection('sec-menu')">⬅️ Menu místnosti</button>
     </div>
 
   </div>
@@ -197,6 +221,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    let currentRoom = "";
     let currentTask = "";
     let timerInterval = null;
     let timerState = "idle"; // idle | preparing | running
@@ -208,7 +233,29 @@
       resetCard();
     }
 
-    // Uložení nového úkolu přímo do Firestore
+    // Vstup do místnosti
+    function joinRoom() {
+      const roomName = document.getElementById('roomInput').value.trim().toLowerCase();
+      
+      if (!roomName) {
+        alert("Zadej název nebo kód místnosti!");
+        return;
+      }
+
+      currentRoom = roomName;
+      document.getElementById('activeRoomBadge').innerText = "Místnost: " + currentRoom;
+      document.getElementById('activeRoomBadge').style.display = "block";
+      showSection('sec-menu');
+    }
+
+    // Opuštění místnosti
+    function leaveRoom() {
+      currentRoom = "";
+      document.getElementById('roomInput').value = "";
+      showSection('sec-room');
+    }
+
+    // Uložení úkolu do konkrétní místnosti ve Firestore
     async function addTask() {
       const category = document.getElementById('taskCat').value;
       const text = document.getElementById('taskInput').value.trim();
@@ -220,29 +267,31 @@
 
       try {
         await db.collection("tasks").add({
+          roomId: currentRoom,
           category: category,
           text: text,
           created_at: firebase.firestore.FieldValue.serverTimestamp()
         });
 
         document.getElementById('taskInput').value = "";
-        alert("Úkol byl úspěšně uložen do databáze!");
+        alert(`Úkol byl úspěšně uložen do místnosti "${currentRoom}"!`);
       } catch (error) {
         alert("Chyba při ukládání: " + error.message);
       }
     }
 
-    // Načtení náhodného úkolu z databáze
+    // Načtení náhodného úkolu z vybrané místnosti
     async function drawTask(category) {
       resetCard();
 
       try {
         const snapshot = await db.collection("tasks")
+          .where("roomId", "==", currentRoom)
           .where("category", "==", category)
           .get();
 
         if (snapshot.empty) {
-          alert("V této kategorii zatím nejsou žádné uložené úkoly.");
+          alert(`V místnosti "${currentRoom}" nejsou pro kategorii "${category}" zatím žádné úkoly.`);
           return;
         }
 
