@@ -23,8 +23,8 @@
     .cards-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 20px 0; }
     .game-card-btn { background: #007bff; color: white; border-radius: 8px; padding: 20px 10px; text-align: center; font-size: 16px; font-weight: bold; border: none; cursor: pointer; }
     
-    .active-card { background: #28a745; color: white; border-radius: 12px; padding: 20px; text-align: center; font-size: 22px; font-weight: bold; min-height: 100px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2); margin: 20px 0; flex-direction: column; cursor: pointer; }
-    .timer-display { font-size: 32px; font-weight: bold; color: #dc3545; margin-top: 10px; background: rgba(255,255,255,0.9); padding: 5px 15px; border-radius: 8px; width: 80%; }
+    .active-card { background: #28a745; color: white; border-radius: 12px; padding: 20px; text-align: center; font-size: 22px; font-weight: bold; min-height: 120px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2); margin: 20px 0; flex-direction: column; cursor: pointer; }
+    .timer-display { font-size: 32px; font-weight: bold; color: #dc3545; background: rgba(255,255,255,0.9); padding: 10px 15px; border-radius: 8px; width: 80%; }
     .timer-phase { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; color: #333; }
 
     /* Seznam uložených místností */
@@ -38,7 +38,6 @@
 
   <h2>🎮 Herní Místnosti</h2>
 
-  <!-- ZÁLOŽKA: Vytvořit místnost -->
   <div class="card" id="createCard">
     <h3>Vytvořit novou místnost</h3>
     <input type="text" id="createName" placeholder="Název místnosti (např. Páteční párty)">
@@ -46,13 +45,11 @@
     <div id="createdCodeBox" class="generated-code"></div>
   </div>
 
-  <!-- ZÁLOŽKA: Moje vytvořené místnosti -->
   <div class="card" id="myRoomsCard" style="display: none;">
     <h3>Moje uložené místnosti</h3>
     <ul id="myRoomsList" class="my-rooms-list"></ul>
   </div>
 
-  <!-- ZÁLOŽKA: Připojit se přes název a kód -->
   <div class="card" id="joinCard">
     <h3>Připojit se k místnosti</h3>
     <input type="text" id="joinName" placeholder="Přesný název místnosti">
@@ -60,7 +57,6 @@
     <button onclick="joinRoom()">Vstoupit do Místnosti</button>
   </div>
 
-  <!-- ROZCESTNÍK PO PŘIPOJENÍ -->
   <div class="card" id="menuArea" style="display: none;">
     <h3 id="menuRoomTitle" style="margin-bottom: 5px;"></h3>
     <p style="margin-top: 0; color: #6c757d;">Kód: <strong id="menuRoomCode"></strong></p>
@@ -69,7 +65,6 @@
     <button class="btn-secondary" onclick="openAddTasks()">➕ Přidat úkoly</button>
   </div>
 
-  <!-- HERNA (Tři karty + Časovač) -->
   <div class="card" id="gameArea" style="display: none;">
     <h3>Vyber si kategorii:</h3>
     
@@ -79,22 +74,20 @@
       <button class="game-card-btn" onclick="handleCategoryClick('mluveni')">🗣️<br>Mluvení</button>
     </div>
 
-    <!-- Zobrazení vybrané karty (kliknutím lze spustit časovač nebo ho zastavit/předčasně odkrýt) -->
     <div id="activeCardBox" class="active-card" style="display: none;" onclick="handleCardClick()">
-      <div id="cardTaskText"></div>
+      <div id="cardTaskText" style="display: none;"></div>
       <div id="timerContainer" style="display: none; width: 100%; align-items: center; flex-direction: column;">
         <div id="timerText" class="timer-display">
           <div id="timerPhase" class="timer-phase">Příprava</div>
           <span id="timerClock">00:10</span>
         </div>
       </div>
-      <small id="cardHint" style="font-size: 12px; margin-top: 10px; opacity: 0.8; font-weight: normal;">(Klikni pro spuštění odpočtu)</small>
+      <small id="cardHint" style="font-size: 12px; margin-top: 10px; opacity: 0.8; font-weight: normal;"></small>
     </div>
 
     <button class="btn-secondary" onclick="backToMenu()">⬅️ Zpět do menu</button>
   </div>
 
-  <!-- FORMULÁŘ: PŘIDÁVÁNÍ ÚKOLŮ -->
   <div class="card" id="addTaskArea" style="display: none;">
     <h3>Přidat nový úkol</h3>
     
@@ -109,7 +102,6 @@
     <button class="btn-secondary" onclick="backToMenu()">⬅️ Zpět do menu</button>
   </div>
 
-  <!-- FIREBASE SKRIPT -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
@@ -141,18 +133,10 @@
     let activeRoomId = null;
     let unsubscribeListener = null;
     
-    // Časovač nastavení
+    // Časovač
     let timerInterval = null;
     let timerSeconds = 10;
-    let timerPhase = "stopped"; // "stopped", "prep", "guessing"
-    let currentSelectedCategory = null;
-
-    // Výchozí úkoly
-    const defaultTasks = {
-      pantomima: ["Pokažený robot", "Zpívající tučňák", "Ztracený turista"],
-      kresleni: ["Mrakodrap v bouřce", "Létající talíř", "Akvárium"],
-      mluveni: ["Popsat film bez názvu", "Vysvětlit co je gravitace", "Řekni 3 vtipy"]
-    };
+    let timerPhase = "stopped"; 
 
     function generate6DigitCode() {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -211,7 +195,7 @@
         await addDoc(collection(db, "rooms"), {
           room_name: name,
           room_code: generatedCode,
-          tasks: defaultTasks,
+          tasks: { pantomima: [], kresleni: [], mluveni: [] },
           active_category: null,
           active_task: null,
           timer_status: "stopped",
@@ -261,7 +245,6 @@
 
             if (unsubscribeListener) unsubscribeListener();
 
-            // POSLUCHAČ PRO REÁLNÝ ČAS
             unsubscribeListener = onSnapshot(doc(db, "rooms", activeRoomId), (docSnapshot) => {
               if (docSnapshot.exists()) {
                 const updatedData = docSnapshot.data();
@@ -275,7 +258,7 @@
       }
     };
 
-    // NAVIGACE A MENU
+    // NAVIGACE
     window.openGame = function() {
       document.getElementById('menuArea').style.display = 'none';
       document.getElementById('gameArea').style.display = 'block';
@@ -305,13 +288,13 @@
         const docSnap = await getDocs(query(collection(db, "rooms"), where("room_code", "==", document.getElementById('menuRoomCode').innerText)));
         
         docSnap.forEach(async (d) => {
-          let currentTasks = d.data().tasks || defaultTasks;
+          let currentTasks = d.data().tasks || {};
           if (!currentTasks[category]) currentTasks[category] = [];
           
           currentTasks[category].push(text);
 
           await updateDoc(roomRef, { tasks: currentTasks });
-          alert("Úkol byl úspěšně přidán!");
+          alert("Úkol byl úspěšně přidán do databáze!");
           document.getElementById('taskText').value = '';
         });
       } catch (e) {
@@ -319,18 +302,22 @@
       }
     };
 
-    // 4. LOGIKA KLIKÁNÍ NA KARTY KATEGORIÍ
+    // 4. KLIKNUTÍ NA KATEGORII (NAČTENÍ Z DATABÁZE)
     window.handleCategoryClick = async function(category) {
       if (!activeRoomId) return;
 
       const roomRef = doc(db, "rooms", activeRoomId);
-
-      // Výběr náhodného úkolu a zobrazení tématu
       const roomSnap = await getDocs(query(collection(db, "rooms"), where("room_code", "==", document.getElementById('menuRoomCode').innerText)));
       
       roomSnap.forEach(async (d) => {
-        const tasks = d.data().tasks || defaultTasks;
-        const categoryTasks = tasks[category] || defaultTasks[category];
+        const tasks = d.data().tasks || {};
+        const categoryTasks = tasks[category] || [];
+
+        if (categoryTasks.length === 0) {
+          alert("V databázi pro tuto kategorii zatím nejsou žádné úkoly! Přidej je v menu.");
+          return;
+        }
+
         const randomTask = categoryTasks[Math.floor(Math.random() * categoryTasks.length)];
 
         await updateDoc(roomRef, {
@@ -341,62 +328,65 @@
       });
     };
 
-    // KLIKNUTÍ NA ZOBRAZENOU KARTU / ČASOVAČ
+    // KLIKNUTÍ NA KARTU / ČASOVAČ
     window.handleCardClick = async function() {
       if (!activeRoomId) return;
       const roomRef = doc(db, "rooms", activeRoomId);
 
-      // Pokud časovač neběží -> Spustí 10s přípravu
       if (timerPhase === "stopped") {
         await updateDoc(roomRef, { timer_status: "prep" });
-      } 
-      // Pokud časovač běží -> Kliknutím ho lze předčasně ukončit/odkrýt
-      else {
+      } else {
         await updateDoc(roomRef, { timer_status: "stopped" });
       }
     };
 
-    // FUNKCE PRO SYNCHRONIZACI DÁT
+    // SYNCHRONIZACE DÁT
     function handleRealtimeUpdate(data) {
       const activeCardBox = document.getElementById('activeCardBox');
       const cardTaskText = document.getElementById('cardTaskText');
       const timerContainer = document.getElementById('timerContainer');
       const cardHint = document.getElementById('cardHint');
 
-      currentSelectedCategory = data.active_category;
-
       if (data.active_task) {
         activeCardBox.style.display = 'flex';
         cardTaskText.innerText = data.active_task;
       } else {
         activeCardBox.style.display = 'none';
+        return;
       }
 
-      // Stav časovače
+      // Stav 1: Příprava (Úkol je SKRYTÝ)
       if (data.timer_status === "prep") {
+        cardTaskText.style.display = 'none';
         timerContainer.style.display = 'flex';
-        cardHint.innerText = "(Klikni pro přeskočení / předčasné odkrytí)";
+        cardHint.innerText = "(Příprava... Klikni pro odhalení)";
+        
         startTimerLocal(10, "Příprava", async () => {
-          // Po 10 sekundách automatický přechod na 3 minuty hádání
           const roomRef = doc(db, "rooms", activeRoomId);
           await updateDoc(roomRef, { timer_status: "guessing" });
         });
-      } else if (data.timer_status === "guessing") {
+      } 
+      // Stav 2: Hádání (Úkol je SKRYTÝ)
+      else if (data.timer_status === "guessing") {
+        cardTaskText.style.display = 'none';
         timerContainer.style.display = 'flex';
-        cardHint.innerText = "(Klikni pro předčasné ukončení)";
-        startTimerLocal(180, "Hádání", () => {
+        cardHint.innerText = "(Hádání... Klikni pro odhalení)";
+        
+        startTimerLocal(180, "Hádání", async () => {
           const roomRef = doc(db, "rooms", activeRoomId);
-          updateDoc(roomRef, { timer_status: "stopped" });
-          alert("⏱️ Čas vypršel!");
+          await updateDoc(roomRef, { timer_status: "stopped" });
         });
-      } else {
+      } 
+      // Stav 3: Zastaveno / Konec (Úkol se ZOBRAZÍ)
+      else {
         stopTimerLocal();
         timerContainer.style.display = 'none';
+        cardTaskText.style.display = 'block';
         cardHint.innerText = "(Klikni pro spuštění odpočtu)";
       }
     }
 
-    // LOKÁLNÍ ČASOVAČ SE DVĚMA FÁZEMI
+    // ČASOVAČ
     function startTimerLocal(seconds, phaseName, onComplete) {
       clearInterval(timerInterval);
       timerSeconds = seconds;
