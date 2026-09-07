@@ -27,6 +27,7 @@
     
     .active-card { background: #28a745; color: white; border-radius: 12px; padding: 20px; text-align: center; font-size: 22px; font-weight: bold; min-height: 120px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2); margin: 20px 0; flex-direction: column; cursor: pointer; }
     .timer-display { font-size: 32px; font-weight: bold; color: #fff; margin-top: 10px; background: rgba(0,0,0,0.2); padding: 5px 15px; border-radius: 6px; }
+    .card-hint { font-size: 13px; font-weight: normal; opacity: 0.8; margin-top: 8px; }
 
     /* Seznam uložených místností */
     .my-rooms-list { list-style: none; padding: 0; margin: 0; }
@@ -82,9 +83,10 @@
     </div>
 
     <!-- Zobrazení vybrané karty -->
-    <div id="activeCardBox" class="active-card" style="display: none;" onclick="toggleTimerByClick()">
+    <div id="activeCardBox" class="active-card" style="display: none;" onclick="handleCardClick()">
       <div id="cardTaskText"></div>
       <div id="timerText" class="timer-display" style="display: none;"></div>
+      <div id="cardHint" class="card-hint">👇 Klikni na kartu pro spuštění odpočtu</div>
     </div>
 
     <button class="btn-secondary" onclick="backToMenu()">⬅️ Zpět do menu</button>
@@ -119,7 +121,7 @@
       updateDoc,
       onSnapshot,
       serverTimestamp 
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAGJkxnka0SSYTkLKf-RFVlINUSqWvfGDs",
@@ -140,7 +142,7 @@
     // Časovač
     let timerInterval = null;
     let currentTaskText = "";
-    let currentTimerPhase = "idle"; // "prep" (10s), "main" (3m), nebo "idle"
+    let currentTimerPhase = "idle"; // "idle" (zobrazen úkol), "prep" (10s), "main" (3m)
 
     // Prázdný výchozí obsah karet
     const emptyTasks = {
@@ -158,7 +160,7 @@
       return result;
     }
 
-    // Uložení, smazení a načtení místností v prohlížeči
+    // Uložení, mazání a načtení místností
     function saveRoomToLocal(name, code) {
       let myRooms = JSON.parse(localStorage.getItem('myRooms')) || [];
       if (!myRooms.some(r => r.code === code)) {
@@ -169,7 +171,7 @@
     }
 
     window.deleteRoomFromLocal = function(code, event) {
-      event.stopPropagation(); // Zamezí automatickému kliknutí na připojení
+      event.stopPropagation();
       let myRooms = JSON.parse(localStorage.getItem('myRooms')) || [];
       myRooms = myRooms.filter(room => room.code !== code);
       localStorage.setItem('myRooms', JSON.stringify(myRooms));
@@ -338,7 +340,7 @@
       }
     };
 
-    // 4. VYBĚR KATEGORIE A SPUŠTĚNÍ ČASOVAČE
+    // 4. VYBĚR KATEGORIE - Jen zobrazí úkol, časovač ještě neběží!
     window.handleCategoryClick = async function(category) {
       if (!activeRoomId) return;
 
@@ -359,15 +361,22 @@
 
         await updateDoc(roomRef, {
           active_task: randomTask,
-          timer_status: "prep" // Zahájí 10s odpočet
+          timer_status: "stopped" // Časovač v klidu, čeká na kliknutí
         });
       });
     };
 
-    // Zrušení 3minutového odpočtu kliknutím na kartu
-    window.toggleTimerByClick = async function() {
-      if (currentTimerPhase === "main") {
-        const roomRef = doc(db, "rooms", activeRoomId);
+    // KLIKNUTÍ NA KARTU
+    window.handleCardClick = async function() {
+      if (!activeRoomId) return;
+      const roomRef = doc(db, "rooms", activeRoomId);
+
+      // Pokud je karta v klidu, kliknutím spustíme 10s odpočet
+      if (currentTimerPhase === "idle") {
+        await updateDoc(roomRef, { timer_status: "prep" });
+      } 
+      // Pokud běží 3minutový odpočet, kliknutím ho předčasně ukončíme
+      else if (currentTimerPhase === "main") {
         await updateDoc(roomRef, { timer_status: "stopped" });
       }
     };
@@ -391,17 +400,19 @@
         startMainTimer();
       } else {
         stopTimerLocal();
-        cardTaskText.innerText = currentTaskText; // Zobrazí text úkolu po skončení odpočtu
+        cardTaskText.innerText = currentTaskText; // Zobrazí text úkolu
       }
     }
 
-    // LOKÁLNÍ PŘÍPRAVNÝ ODPOČET (10 SEKUND)
+    // 10 SEKUND S VIDITELNÝM TEXTEM ÚKOLU
     function startPrepTimer() {
       clearInterval(timerInterval);
       currentTimerPhase = "prep";
       
       let secondsLeft = 10;
-      document.getElementById('cardTaskText').innerText = "Připrav se...";
+      document.getElementById('cardTaskText').innerText = currentTaskText;
+      document.getElementById('cardHint').style.display = 'none';
+
       const timerText = document.getElementById('timerText');
       timerText.style.display = 'block';
       timerText.innerText = `00:${secondsLeft.toString().padStart(2, '0')}`;
@@ -412,20 +423,23 @@
 
         if (secondsLeft <= 0) {
           clearInterval(timerInterval);
-          // Po 10 sekundách přepne na 3minutový odpočet
+          // Přepnutí na 3minutový odpočet
           const roomRef = doc(db, "rooms", activeRoomId);
           await updateDoc(roomRef, { timer_status: "main" });
         }
       }, 1000);
     }
 
-    // LOKÁLNÍ HLAVNÍ ODPOČET (3 MINUTY)
+    // 3 MINUTY ZE SKRYTÝM TEXTEM
     function startMainTimer() {
       clearInterval(timerInterval);
       currentTimerPhase = "main";
       
       let secondsLeft = 180;
       document.getElementById('cardTaskText').innerText = "Hra probíhá! (Úkol skryt)";
+      document.getElementById('cardHint').innerText = "👇 Klikni pro odhalení úkolu";
+      document.getElementById('cardHint').style.display = 'block';
+
       const timerText = document.getElementById('timerText');
       timerText.style.display = 'block';
 
@@ -453,6 +467,8 @@
       clearInterval(timerInterval);
       currentTimerPhase = "idle";
       document.getElementById('timerText').style.display = 'none';
+      document.getElementById('cardHint').innerText = "👇 Klikni na kartu pro spuštění odpočtu";
+      document.getElementById('cardHint').style.display = 'block';
     }
 
     function resetTimerLocal() {
