@@ -3,382 +3,311 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Herní Místnosti s Kartami</title>
+  <title>Párty Hra</title>
   <style>
-    body { font-family: sans-serif; max-width: 500px; margin: 20px auto; padding: 20px; background-color: #f4f4f9; }
-    .card { background: white; border: 1px solid #ccc; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    input, button, select { width: 100%; padding: 12px; margin: 8px 0 16px 0; box-sizing: border-box; border-radius: 6px; }
-    input, select { border: 1px solid #ccc; font-size: 16px; }
-    button { background-color: #007bff; color: white; border: none; font-size: 16px; font-weight: bold; cursor: pointer; }
-    button:hover { background-color: #0056b3; }
-    
+    * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #f0f2f5;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    h1, h2, h3 {
+      text-align: center;
+      margin-top: 0;
+      color: #1c1e21;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0 16px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
     .btn-secondary { background-color: #6c757d; }
     .btn-secondary:hover { background-color: #5a6268; }
     .btn-success { background-color: #28a745; }
     .btn-success:hover { background-color: #218838; }
-    .btn-danger { background-color: #dc3545; border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; width: auto; margin: 0; font-size: 14px; }
-    .btn-danger:hover { background-color: #bd2130; }
-    
-    .generated-code { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 10px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 15px; display: none; }
-    
-    /* Herní karty */
-    .cards-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 20px 0; }
-    .game-card-btn { background: #007bff; color: white; border-radius: 8px; padding: 20px 10px; text-align: center; font-size: 16px; font-weight: bold; border: none; cursor: pointer; }
-    
-    .active-card { background: #28a745; color: white; border-radius: 12px; padding: 20px; text-align: center; font-size: 22px; font-weight: bold; min-height: 120px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2); margin: 20px 0; flex-direction: column; cursor: pointer; }
-    .timer-display { font-size: 32px; font-weight: bold; color: #fff; margin-top: 10px; background: rgba(0,0,0,0.2); padding: 5px 15px; border-radius: 6px; }
-    .card-hint { font-size: 13px; font-weight: normal; opacity: 0.8; margin-top: 8px; }
 
-    /* Seznam uložených místností */
-    .my-rooms-list { list-style: none; padding: 0; margin: 0; }
-    .my-rooms-item { background: #f8f9fa; border: 1px solid #e9ecef; padding: 10px 15px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
-    .my-rooms-info { cursor: pointer; flex-grow: 1; }
-    .my-rooms-info span { font-weight: bold; }
-    .my-rooms-code { background: #007bff; color: white; padding: 3px 8px; border-radius: 4px; font-size: 14px; margin-left: 8px; }
+    /* Kategorie */
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .btn-category {
+      background: #e7f3ff;
+      color: #007bff;
+      border: 2px solid #007bff;
+      padding: 15px 5px;
+      font-size: 14px;
+      margin: 0;
+    }
+
+    .btn-category:hover {
+      background: #007bff;
+      color: white;
+    }
+
+    /* Karta s úkolem */
+    .card-display {
+      background: #28a745;
+      color: white;
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      min-height: 160px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 10px rgba(40, 167, 69, 0.3);
+    }
+
+    .task-title {
+      font-size: 22px;
+      font-weight: bold;
+      word-break: break-word;
+    }
+
+    .timer {
+      font-size: 36px;
+      font-weight: bold;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 4px 16px;
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+
+    .hint {
+      font-size: 12px;
+      opacity: 0.85;
+      margin-top: 12px;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
   </style>
-
-  <!-- FIREBASE KNIHOVNY (Kompatibilní verzování) -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
-  <h2>🎮 Herní Místnosti</h2>
-
-  <!-- ZÁLOŽKA: Vytvořit místnost -->
-  <div class="card" id="createCard">
-    <h3>Vytvořit novou místnost</h3>
-    <input type="text" id="createName" placeholder="Název místnosti (např. Páteční párty)">
-    <button onclick="createRoom()">Vytvořit Místnost</button>
-    <div id="createdCodeBox" class="generated-code"></div>
-  </div>
-
-  <!-- ZÁLOŽKA: Moje vytvořené místnosti -->
-  <div class="card" id="myRoomsCard" style="display: none;">
-    <h3>Moje uložené místnosti</h3>
-    <ul id="myRoomsList" class="my-rooms-list"></ul>
-  </div>
-
-  <!-- ZÁLOŽKA: Připojit se přes název a kód -->
-  <div class="card" id="joinCard">
-    <h3>Připojit se k místnosti</h3>
-    <input type="text" id="joinName" placeholder="Přesný název místnosti">
-    <input type="text" id="joinCode" placeholder="6místný kód místnosti">
-    <button onclick="joinRoom()">Vstoupit do Místnosti</button>
-  </div>
-
-  <!-- ROZCESTNÍK PO PŘIPOJENÍ -->
-  <div class="card" id="menuArea" style="display: none;">
-    <h3 id="menuRoomTitle" style="margin-bottom: 5px;"></h3>
-    <p style="margin-top: 0; color: #6c757d;">Kód: <strong id="menuRoomCode"></strong></p>
-
-    <button class="btn-success" onclick="openGame()">▶️ Hrát</button>
-    <button class="btn-secondary" onclick="openAddTasks()">➕ Přidat úkoly</button>
-  </div>
-
-  <!-- HERNA (Tři karty + Časovač) -->
-  <div class="card" id="gameArea" style="display: none;">
-    <h3>Vyber si kategorii:</h3>
+  <div class="container">
     
-    <div class="cards-grid">
-      <button class="game-card-btn" onclick="handleCategoryClick('pantomima')">🎭<br>Pantomima</button>
-      <button class="game-card-btn" onclick="handleCategoryClick('kresleni')">🎨<br>Kreslení</button>
-      <button class="game-card-btn" onclick="handleCategoryClick('mluveni')">🗣️<br>Mluvení</button>
+    <!-- HLAVNÍ MENU -->
+    <div id="sec-menu" class="section active">
+      <h1>🎮 Párty Hra</h1>
+      <button class="btn-success" onclick="showSection('sec-game')">▶️ Spustit hru</button>
+      <button class="btn-secondary" onclick="showSection('sec-add')">➕ Přidat úkoly</button>
     </div>
 
-    <!-- Zobrazení vybrané karty -->
-    <div id="activeCardBox" class="active-card" style="display: none;" onclick="handleCardClick()">
-      <div id="cardTaskText"></div>
-      <div id="timerText" class="timer-display" style="display: none;"></div>
-      <div id="cardHint" class="card-hint">👇 Klikni pro skrytí úkolu a spuštění odpočtu</div>
+    <!-- HRA -->
+    <div id="sec-game" class="section">
+      <h2>Vyber kategorii</h2>
+      
+      <div class="grid-3">
+        <button class="btn-category" onclick="drawTask('pantomima')">🎭<br>Pantomima</button>
+        <button class="btn-category" onclick="drawTask('kresleni')">🎨<br>Kreslení</button>
+        <button class="btn-category" onclick="drawTask('mluveni')">🗣️<br>Mluvení</button>
+      </div>
+
+      <!-- Karta s úkolem -->
+      <div id="cardBox" class="card-display" style="display: none;" onclick="onCardClick()">
+        <div id="taskText" class="task-title">---</div>
+        <div id="timerDisplay" class="timer" style="display: none;">00:00</div>
+        <div id="hintText" class="hint">Klikni pro skrytí a odpočet</div>
+      </div>
+
+      <button class="btn-secondary" onclick="showSection('sec-menu')">⬅️ Hlavní menu</button>
     </div>
 
-    <button class="btn-secondary" onclick="backToMenu()">⬅️ Zpět do menu</button>
-  </div>
+    <!-- PŘIDÁNÍ ÚKOLU -->
+    <div id="sec-add" class="section">
+      <h2>Přidat nový úkol</h2>
+      
+      <label for="taskCat">Kategorie:</label>
+      <select id="taskCat">
+        <option value="pantomima">🎭 Pantomima</option>
+        <option value="kresleni">🎨 Kreslení</option>
+        <option value="mluveni">🗣️ Mluvení</option>
+      </select>
 
-  <!-- FORMULÁŘ: PŘIDÁVÁNÍ ÚKOLŮ -->
-  <div class="card" id="addTaskArea" style="display: none;">
-    <h3>Přidat nový úkol</h3>
-    
-    <select id="taskCategory">
-      <option value="pantomima">🎭 Pantomima</option>
-      <option value="kresleni">🎨 Kreslení</option>
-      <option value="mluveni">🗣️ Mluvení</option>
-    </select>
+      <input type="text" id="taskInput" placeholder="Zadej text úkolu...">
+      <button class="btn-success" onclick="addTask()">Uložit úkol</button>
+      <button class="btn-secondary" onclick="showSection('sec-menu')">⬅️ Hlavní menu</button>
+    </div>
 
-    <input type="text" id="taskText" placeholder="Zadej úkol (např. Pokažený robot)">
-    <button class="btn-success" onclick="saveTask()">Uložit úkol</button>
-    <button class="btn-secondary" onclick="backToMenu()">⬅️ Zpět do menu</button>
   </div>
 
   <script>
-    // Konfigurace Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyAGJkxnka0SSYTkLKf-RFVlINUSqWvfGDs",
-      authDomain: "hra2-5d08e.firebaseapp.com",
-      projectId: "hra2-5d08e",
-      storageBucket: "hra2-5d08e.firebasestorage.app",
-      messagingSenderId: "663042972829",
-      appId: "1:663042972829:web:36c7164506a8e3f0e10874",
-      measurementId: "G-FL98QZ16FW"
+    // Základní zásoba úkolů
+    const tasks = {
+      pantomima: ["Pokažený robot", "Jízda na kole v dešti", "Šéfkuchař"],
+      kresleni: ["Kravata", "Kosmonaut na Měsíci", "Větrný mlýn"],
+      mluveni: ["Vysvětli pravidla fotbalu bez použití slova 'míč'", "Popsat přípravu kávy", "Představit se jako mimozemšťan"]
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    let activeRoomId = null;
-    let unsubscribeListener = null;
-    
+    let currentTask = "";
     let timerInterval = null;
-    let currentTaskText = "";
-    let isTimerRunning = false;
+    let timerState = "idle"; // idle | preparing | running
 
-    const emptyTasks = { pantomima: [], kresleni: [], mluveni: [] };
-
-    function generate6DigitCode() {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-      let result = '';
-      for (let i = 0; i < 6; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      return result;
+    // Přepínání obrazovek
+    function showSection(id) {
+      document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      resetCard();
     }
 
-    function saveRoomToLocal(name, code) {
-      let myRooms = JSON.parse(localStorage.getItem('myRooms')) || [];
-      if (!myRooms.some(r => r.code === code)) {
-        myRooms.push({ name, code });
-        localStorage.setItem('myRooms', JSON.stringify(myRooms));
-      }
-      renderMyRooms();
-    }
+    // Přidání nového úkolu
+    function addTask() {
+      const cat = document.getElementById('taskCat').value;
+      const text = document.getElementById('taskInput').value.trim();
 
-    function deleteRoomFromLocal(code, event) {
-      event.stopPropagation();
-      let myRooms = JSON.parse(localStorage.getItem('myRooms')) || [];
-      myRooms = myRooms.filter(room => room.code !== code);
-      localStorage.setItem('myRooms', JSON.stringify(myRooms));
-      renderMyRooms();
-    }
-
-    function renderMyRooms() {
-      let myRooms = JSON.parse(localStorage.getItem('myRooms')) || [];
-      const listElement = document.getElementById('myRoomsList');
-      const cardElement = document.getElementById('myRoomsCard');
-
-      if (myRooms.length === 0) {
-        cardElement.style.display = 'none';
+      if (!text) {
+        alert("Zadej text úkolu!");
         return;
       }
 
-      cardElement.style.display = 'block';
-      listElement.innerHTML = '';
-
-      myRooms.forEach(room => {
-        const li = document.createElement('li');
-        li.className = 'my-rooms-item';
-        li.innerHTML = `
-          <div class="my-rooms-info">
-            <span>${room.name}</span> 
-            <span class="my-rooms-code">${room.code}</span>
-          </div>
-          <button class="btn-danger" onclick="deleteRoomFromLocal('${room.code}', event)">❌</button>
-        `;
-        
-        li.querySelector('.my-rooms-info').onclick = () => {
-          document.getElementById('joinName').value = room.name;
-          document.getElementById('joinCode').value = room.code;
-          joinRoom();
-        };
-
-        listElement.appendChild(li);
-      });
+      tasks[cat].push(text);
+      document.getElementById('taskInput').value = "";
+      alert("Úkol byl úspěšně přidán!");
     }
 
-    renderMyRooms();
-
-    // 1. VYTVOŘENÍ MÍSTNOSTI
-    async function createRoom() {
-      const name = document.getElementById('createName').value.trim();
-      if (!name) return alert("Vyplň název místnosti!");
-
-      const generatedCode = generate6DigitCode();
-
-      try {
-        await db.collection("rooms").add({
-          room_name: name,
-          room_code: generatedCode,
-          tasks: emptyTasks,
-          active_task: null,
-          created_at: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        saveRoomToLocal(name, generatedCode);
-
-        const codeBox = document.getElementById('createdCodeBox');
-        codeBox.innerText = `Místnost vytvořena! Kód: ${generatedCode}`;
-        codeBox.style.display = 'block';
-        document.getElementById('createName').value = '';
-      } catch (e) {
-        alert("Chyba při vytváření: " + e.message);
+    // Losování úkolu
+    function drawTask(category) {
+      const list = tasks[category];
+      if (!list || list.length === 0) {
+        alert("V této kategorii nejsou žádné úkoly.");
+        return;
       }
+
+      resetCard();
+      const randomIndex = Math.floor(Math.random() * list.length);
+      currentTask = list[randomIndex];
+
+      document.getElementById('taskText').innerText = currentTask;
+      document.getElementById('cardBox').style.display = 'flex';
+      document.getElementById('hintText').innerText = "👇 Klikni pro skrytí a spuštění odpočtu";
     }
 
-    // 2. PŘIPOJENÍ SE
-    async function joinRoom() {
-      const name = document.getElementById('joinName').value.trim();
-      const code = document.getElementById('joinCode').value.trim().toUpperCase();
-
-      if (!name || !code) return alert("Zadej název i kód!");
-
-      try {
-        const querySnapshot = await db.collection("rooms").where("room_code", "==", code).get();
-
-        if (querySnapshot.empty) {
-          alert("Místnost s tímto kódem neexistuje!");
-        } else {
-          let found = false;
-          querySnapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-
-            if (data.room_name.toLowerCase() === name.toLowerCase()) {
-              found = true;
-              activeRoomId = docSnap.id;
-
-              document.getElementById('menuRoomTitle').innerText = data.room_name;
-              document.getElementById('menuRoomCode').innerText = data.room_code;
-              
-              document.getElementById('createCard').style.display = 'none';
-              document.getElementById('joinCard').style.display = 'none';
-              document.getElementById('myRoomsCard').style.display = 'none';
-              document.getElementById('menuArea').style.display = 'block';
-
-              if (unsubscribeListener) unsubscribeListener();
-
-              unsubscribeListener = db.collection("rooms").doc(activeRoomId).onSnapshot((docSnapshot) => {
-                if (docSnapshot.exists) {
-                  const data = docSnapshot.data();
-                  if (data.active_task && data.active_task !== currentTaskText) {
-                    currentTaskText = data.active_task;
-                    resetCardToShownState();
-                  }
-                }
-              });
-            }
-          });
-
-          if (!found) alert("Kód souhlasí, ale název místnosti nesedí!");
-        }
-      } catch (e) {
-        alert("Chyba při připojování: " + e.message);
-      }
-    }
-
-    // NAVIGACE
-    function openGame() {
-      document.getElementById('menuArea').style.display = 'none';
-      document.getElementById('gameArea').style.display = 'block';
-    }
-
-    function openAddTasks() {
-      document.getElementById('menuArea').style.display = 'none';
-      document.getElementById('addTaskArea').style.display = 'block';
-    }
-
-    function backToMenu() {
-      document.getElementById('gameArea').style.display = 'none';
-      document.getElementById('addTaskArea').style.display = 'none';
-      document.getElementById('menuArea').style.display = 'block';
-      clearInterval(timerInterval);
-      document.getElementById('activeCardBox').style.display = 'none';
-    }
-
-    // 3. PŘIDÁVÁNÍ ÚKOLŮ
-    async function saveTask() {
-      const category = document.getElementById('taskCategory').value;
-      const text = document.getElementById('taskText').value.trim();
-
-      if (!text) return alert("Zadej text úkolu!");
-
-      try {
-        const roomRef = db.collection("rooms").doc(activeRoomId);
-        const docSnap = await roomRef.get();
-        
-        if (docSnap.exists) {
-          let currentTasks = docSnap.data().tasks || emptyTasks;
-          if (!currentTasks[category]) currentTasks[category] = [];
-          currentTasks[category].push(text);
-
-          await roomRef.update({ tasks: currentTasks });
-          alert("Úkol úspěšně přidán!");
-          document.getElementById('taskText').value = '';
-        }
-      } catch (e) {
-        alert("Chyba při ukládání: " + e.message);
-      }
-    }
-
-    // 4. VYBRÁNÍ KATEGORIE
-    async function handleCategoryClick(category) {
-      if (!activeRoomId) return;
-
-      const roomRef = db.collection("rooms").doc(activeRoomId);
-      const docSnap = await roomRef.get();
-      
-      if (docSnap.exists) {
-        const tasks = docSnap.data().tasks || emptyTasks;
-        const categoryTasks = tasks[category] || [];
-
-        if (categoryTasks.length === 0) {
-          alert("Tato kategorie ještě nemá žádné úkoly! Nejprve je přidej v menu.");
-          return;
-        }
-
-        const randomTask = categoryTasks[Math.floor(Math.random() * categoryTasks.length)];
-        await roomRef.update({ active_task: randomTask });
-      }
-    }
-
-    // KLIKNUTÍ NA KARTU
-    function handleCardClick() {
-      if (!isTimerRunning) {
-        start10sCountdown();
+    // Kliknutí na kartu
+    function onCardClick() {
+      if (timerState === "idle") {
+        startPreparation();
       } else {
-        resetCardToShownState();
+        revealCard();
       }
     }
 
-    function resetCardToShownState() {
-      clearInterval(timerInterval);
-      isTimerRunning = false;
+    // 10sekundová příprava
+    function startPreparation() {
+      timerState = "preparing";
+      let seconds = 10;
 
-      document.getElementById('activeCardBox').style.display = 'flex';
-      document.getElementById('cardTaskText').innerText = currentTaskText;
-      document.getElementById('timerText').style.display = 'none';
-      document.getElementById('cardHint').innerText = "👇 Klikni pro skrytí úkolu a spuštění odpočtu";
+      document.getElementById('taskText').innerText = "⏳ Připrav se...";
+      document.getElementById('hintText').innerText = "👇 Klikni pro předčasné odkrytí";
+      
+      const timerEl = document.getElementById('timerDisplay');
+      timerEl.style.display = "block";
+      timerEl.innerText = "00:10";
+
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        seconds--;
+        timerEl.innerText = `00:${seconds < 10 ? '0' : ''}${seconds}`;
+
+        if (seconds <= 0) {
+          clearInterval(timerInterval);
+          start3MinTimer();
+        }
+      }, 1000);
     }
 
-    function start10sCountdown() {
+    // 3minutový odpočet
+    function start3MinTimer() {
+      timerState = "running";
+      let seconds = 180;
+
+      document.getElementById('taskText').innerText = "🎭 Hra probíhá!";
+      const timerEl = document.getElementById('timerDisplay');
+
+      const updateDisplay = () => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        timerEl.innerText = `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+      };
+
+      updateDisplay();
+
       clearInterval(timerInterval);
-      isTimerRunning = true;
+      timerInterval = setInterval(() => {
+        seconds--;
+        updateDisplay();
 
-      let sec = 10;
-      document.getElementById('cardTaskText').innerText = "⏳ Připrav se...";
-      document.getElementById('cardHint').innerText = "👇 Klikni pro předKdyž obrazovka nereaguje na klikání, obvykle jde o zamrznutou aplikaci, zásek systému nebo problém s perifériemi.
+        if (seconds <= 0) {
+          revealCard();
+        }
+      }, 1000);
+    }
 
-**Provedení rychlé opravy:**
+    // Odkrytí úkolu zpět
+    function revealCard() {
+      clearInterval(timerInterval);
+      timerState = "idle";
 
-1. **Restartujte grafické ovladače (Windows):**
-   * Stiskněte klávesovou zkratku **Win + Ctrl + Shift + B**. Obrazovka na sekundu blikne a ozve se pípnutí. Pokud šlo o zásek grafiky, ovládání se obnoví.
-2. **Ukončete zaseknutou aplikaci přes Správce úloh:**
-   * Stiskněte **Ctrl + Shift + Esc**.
-   * Pokud Správce úloh vyskočí, pomocí šipek na klávesnici a klávesy **Delete** (nebo **Enter**) ukončete aplikaci, která nereaguje.
-3. **Povolte zamrzlé rozhraní (Windows Explorer):**
-   * Ve Správci úloh stiskněte **Alt + N** (Nová úloha), napište `explorer.exe` a stiskněte **Enter**.
-4. **Ověřte periferie (myš a touchpad):**
-   * Pokud používáte bezdrátovou myš, odpojte a znovu zapojte USB přijímač nebo zkontrolujte baterii.
-   * U notebooku zkontrolujte, zda jste si náhodou nevypnuli touchpad klávesovou zkratkou (často **Fn + F5 / F7 / F9**).
-5. **Tvrdý restart (krajní řešení):**
-   * Pokud nic z výše uvedeného nefunguje a klávesnice nereaguje, podržte zapínací tlačítko počítače/notebooku po dobu **5–10 sekund**, dokud se zařízení úplně nevypne, a poté jej znovu zapněte.
+      document.getElementById('taskText').innerText = currentTask;
+      document.getElementById('timerDisplay').style.display = "none";
+      document.getElementById('hintText').innerText = "👇 Klikni pro skrytí a spuštění odpočtu";
+    }
 
-<FollowUp label="Pomohla některá ze zkratek, nebo systém vůbec nereaguje ani na klávesnici?" query="Pořád to nefunguje a počítač nereaguje ani na klávesnici, co mám dělat dál?" />
+    // Reset karty
+    function resetCard() {
+      clearInterval(timerInterval);
+      timerState = "idle";
+      currentTask = "";
+      document.getElementById('cardBox').style.display = "none";
+      document.getElementById('timerDisplay').style.display = "none";
+    }
+  </script>
+
+</body>
+</html>
