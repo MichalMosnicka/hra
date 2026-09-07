@@ -152,11 +152,16 @@
       return result;
     }
 
+    // Uložení místnosti do paměti prohlížeče (s kontrolou duplicit)
     function saveRoomToLocal(name, code) {
       let myRooms = JSON.parse(localStorage.getItem('myRooms')) || [];
-      myRooms.push({ name, code });
-      localStorage.setItem('myRooms', JSON.stringify(myRooms));
-      renderMyRooms();
+      const exists = myRooms.some(room => room.code === code);
+      
+      if (!exists) {
+        myRooms.push({ name, code });
+        localStorage.setItem('myRooms', JSON.stringify(myRooms));
+        renderMyRooms();
+      }
     }
 
     // Odstranění místnosti z paměti
@@ -192,7 +197,7 @@
           <button class="btn-delete-room" title="Odstranit ze známých">❌</button>
         `;
         
-        // Klik na název/kód pro připojení
+        // Klik na název/kód pro rychlé připojení
         li.querySelector('.my-rooms-info').onclick = () => {
           document.getElementById('joinName').value = room.name;
           document.getElementById('joinCode').value = room.code;
@@ -261,6 +266,9 @@
           querySnapshot.forEach((docSnap) => {
             activeRoomId = docSnap.id;
             const data = docSnap.data();
+
+            // Uložení do paměti po úspěšném připojení
+            saveRoomToLocal(data.room_name, data.room_code);
 
             document.getElementById('menuRoomTitle').innerText = data.room_name;
             document.getElementById('menuRoomCode').innerText = data.room_code;
