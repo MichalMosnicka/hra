@@ -1,83 +1,127 @@
-<script type="module">
-  // 1. Import základních funkcí Firebase + Firestore databáze
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { 
-    getFirestore, 
-    collection, 
-    addDoc, 
-    query, 
-    where, 
-    getDocs, 
-    serverTimestamp 
-  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Herní Místnosti</title>
+  <style>
+    body { font-family: sans-serif; max-width: 500px; margin: 40px auto; padding: 20px; background-color: #f4f4f9; }
+    .card { background: white; border: 1px solid #ccc; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    input, button { width: 100%; padding: 12px; margin: 8px 0 16px 0; box-sizing: border-box; border-radius: 6px; }
+    input { border: 1px solid #ccc; font-size: 16px; }
+    button { background-color: #007bff; color: white; border: none; font-size: 16px; font-weight: bold; cursor: pointer; }
+    button:hover { background-color: #0056b3; }
+    .room-info { background: #e9ecef; border-left: 5px solid #007bff; padding: 15px; border-radius: 5px; margin-top: 15px; }
+  </style>
+</head>
+<body>
 
-  // 2. Tvé údaje z nového projektu (hra2-5d08e)
-  const firebaseConfig = {
-    apiKey: "AIzaSyAGJkxnka0SSYTkLKf-RFVlINUSqWvfGDs",
-    authDomain: "hra2-5d08e.firebaseapp.com",
-    projectId: "hra2-5d08e",
-    storageBucket: "hra2-5d08e.firebasestorage.app",
-    messagingSenderId: "663042972829",
-    appId: "1:663042972829:web:36c7164506a8e3f0e10874",
-    measurementId: "G-FL98QZ16FW"
-  };
+  <h2>🎮 Herní Místnosti</h2>
 
-  // 3. Inicializace Firebase a propojení Firestore databáze
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+  <!-- ZÁLOŽKA: Vytvořit místnost -->
+  <div class="card">
+    <h3>Vytvořit novou místnost</h3>
+    <input type="text" id="createName" placeholder="Název místnosti (např. Páteční párty)">
+    <input type="text" id="createCode" placeholder="Unikátní kód (např. 1234)">
+    <button onclick="createRoom()">Vytvořit Místnost</button>
+  </div>
 
-  // 4. FUNKCE PRO VYTVOŘENÍ MÍSTNOSTI
-  window.createRoom = async function() {
-    const name = document.getElementById('createName').value.trim();
-    const code = document.getElementById('createCode').value.trim();
+  <!-- ZÁLOŽKA: Připojit se přes kód -->
+  <div class="card">
+    <h3>Připojit se k místnosti</h3>
+    <input type="text" id="joinCode" placeholder="Zadej kód místnosti">
+    <button onclick="joinRoom()">Vstoupit do Místnosti</button>
+  </div>
 
-    if (!name || !code) {
-      alert("Vyplň název i kód!");
-      return;
-    }
+  <!-- ZOBRAZENÍ DETAILU MÍSTNOSTI -->
+  <div id="roomDetail" class="room-info" style="display: none;">
+    <h3 id="roomTitle"></h3>
+    <p><strong>Kód místnosti:</strong> <span id="roomCodeDisplay"></span></p>
+    <p>Status: Připojeno ✅</p>
+  </div>
 
-    try {
-      await addDoc(collection(db, "rooms"), {
-        room_name: name,
-        room_code: code,
-        created_at: serverTimestamp()
-      });
-      alert(`Místnost "${name}" byla úspěšně vytvořena!`);
-      document.getElementById('createName').value = '';
-      document.getElementById('createCode').value = '';
-    } catch (e) {
-      console.error("Chyba při zápisu: ", e);
-      alert("Chyba při vytváření místnosti: " + e.message);
-    }
-  };
+  <!-- FIREBASE SKRIPT -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { 
+      getFirestore, 
+      collection, 
+      addDoc, 
+      query, 
+      where, 
+      getDocs, 
+      serverTimestamp 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  // 5. FUNKCE PRO PŘIPOJENÍ SE PŘES KÓD (Strict Filter)
-  window.joinRoom = async function() {
-    const code = document.getElementById('joinCode').value.trim();
+    // Tvá konfigurace z projektu hra2-5d08e
+    const firebaseConfig = {
+      apiKey: "AIzaSyAGJkxnka0SSYTkLKf-RFVlINUSqWvfGDs",
+      authDomain: "hra2-5d08e.firebaseapp.com",
+      projectId: "hra2-5d08e",
+      storageBucket: "hra2-5d08e.firebasestorage.app",
+      messagingSenderId: "663042972829",
+      appId: "1:663042972829:web:36c7164506a8e3f0e10874",
+      measurementId: "G-FL98QZ16FW"
+    };
 
-    if (!code) {
-      alert("Zadej kód místnosti!");
-      return;
-    }
+    // Inicializace
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-    try {
-      const q = query(collection(db, "rooms"), where("room_code", "==", code));
-      const querySnapshot = await getDocs(q);
+    // Funkce pro vytvoření místnosti
+    window.createRoom = async function() {
+      const name = document.getElementById('createName').value.trim();
+      const code = document.getElementById('createCode').value.trim();
 
-      if (querySnapshot.empty) {
-        alert("Místnost s tímto kódem neexistuje!");
-        document.getElementById('roomDetail').style.display = 'none';
-      } else {
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          document.getElementById('roomTitle').innerText = data.room_name;
-          document.getElementById('roomCodeDisplay').innerText = data.room_code;
-          document.getElementById('roomDetail').style.display = 'block';
-        });
+      if (!name || !code) {
+        alert("Vyplň název i kód!");
+        return;
       }
-    } catch (e) {
-      console.error("Chyba při načítání: ", e);
-      alert("Chyba při připojování k místnosti: " + e.message);
-    }
-  };
-</script>
+
+      try {
+        await addDoc(collection(db, "rooms"), {
+          room_name: name,
+          room_code: code,
+          created_at: serverTimestamp()
+        });
+        alert(`Místnost "${name}" byla úspěšně vytvořena!`);
+        document.getElementById('createName').value = '';
+        document.getElementById('createCode').value = '';
+      } catch (e) {
+        console.error("Chyba při zápisu: ", e);
+        alert("Chyba při vytváření místnosti: " + e.message);
+      }
+    };
+
+    // Funkce pro připojení k místnosti přes kód
+    window.joinRoom = async function() {
+      const code = document.getElementById('joinCode').value.trim();
+
+      if (!code) {
+        alert("Zadej kód místnosti!");
+        return;
+      }
+
+      try {
+        const q = query(collection(db, "rooms"), where("room_code", "==", code));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+          alert("Místnost s tímto kódem neexistuje!");
+          document.getElementById('roomDetail').style.display = 'none';
+        } else {
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            document.getElementById('roomTitle').innerText = data.room_name;
+            document.getElementById('roomCodeDisplay').innerText = data.room_code;
+            document.getElementById('roomDetail').style.display = 'block';
+          });
+        }
+      } catch (e) {
+        console.error("Chyba při načítání: ", e);
+        alert("Chyba při připojování k místnosti: " + e.message);
+      }
+    };
+  </script>
+</body>
+</html>
