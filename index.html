@@ -86,7 +86,7 @@
     <div id="activeCardBox" class="active-card" style="display: none;" onclick="handleCardClick()">
       <div id="cardTaskText"></div>
       <div id="timerText" class="timer-display" style="display: none;"></div>
-      <div id="cardHint" class="card-hint">👇 Klikni na kartu pro spuštění odpočtu</div>
+      <div id="cardHint" class="card-hint">👇 Klikni pro skrytí úkolu a spuštění odpočtu</div>
     </div>
 
     <button class="btn-secondary" onclick="backToMenu()">⬅️ Zpět do menu</button>
@@ -142,7 +142,7 @@
     // Časovač
     let timerInterval = null;
     let currentTaskText = "";
-    let currentTimerPhase = "idle"; // "idle" (zobrazen úkol), "prep" (10s), "main" (3m)
+    let currentTimerPhase = "idle"; // "idle" (zobrazen úkol), "prep" (10s skrytý), "main" (3m skrytý)
 
     // Prázdný výchozí obsah karet
     const emptyTasks = {
@@ -340,7 +340,7 @@
       }
     };
 
-    // 4. VYBĚR KATEGORIE - Jen zobrazí úkol, časovač ještě neběží!
+    // 4. VYBĚR KATEGORIE - Zobrazí se úkol, časovač NEBĚŽÍ!
     window.handleCategoryClick = async function(category) {
       if (!activeRoomId) return;
 
@@ -361,22 +361,22 @@
 
         await updateDoc(roomRef, {
           active_task: randomTask,
-          timer_status: "stopped" // Časovač v klidu, čeká na kliknutí
+          timer_status: "stopped" // Časovač v klidu, zobrazen úkol
         });
       });
     };
 
-    // KLIKNUTÍ NA KARTU
+    // KLIKNUTÍ NA KARTU S ÚKOLEM
     window.handleCardClick = async function() {
       if (!activeRoomId) return;
       const roomRef = doc(db, "rooms", activeRoomId);
 
-      // Pokud je karta v klidu, kliknutím spustíme 10s odpočet
+      // Pokud je zobrazena karta s úkolem (idle), kliknutím ji skryjeme a spustíme 10s odpočet
       if (currentTimerPhase === "idle") {
         await updateDoc(roomRef, { timer_status: "prep" });
       } 
-      // Pokud běží 3minutový odpočet, kliknutím ho předčasně ukončíme
-      else if (currentTimerPhase === "main") {
+      // Pokud běží jakýkoliv odpočet (10s nebo 3m), kliknutím ho ukončíme a opět odkryjeme úkol
+      else {
         await updateDoc(roomRef, { timer_status: "stopped" });
       }
     };
@@ -404,14 +404,15 @@
       }
     }
 
-    // 10 SEKUND S VIDITELNÝM TEXTEM ÚKOLU
+    // 10 SEKUNDOVÝ ODPOČET (TEXT JE SKRYTÝ)
     function startPrepTimer() {
       clearInterval(timerInterval);
       currentTimerPhase = "prep";
       
       let secondsLeft = 10;
-      document.getElementById('cardTaskText').innerText = currentTaskText;
-      document.getElementById('cardHint').style.display = 'none';
+      document.getElementById('cardTaskText').innerText = "⏳ Připrav se...";
+      document.getElementById('cardHint').innerText = "👇 Klikni pro odhalení úkolu";
+      document.getElementById('cardHint').style.display = 'block';
 
       const timerText = document.getElementById('timerText');
       timerText.style.display = 'block';
@@ -430,13 +431,13 @@
       }, 1000);
     }
 
-    // 3 MINUTY ZE SKRYTÝM TEXTEM
+    // 3MINUTOVÝ ODPOČET (TEXT JE SKRYTÝ)
     function startMainTimer() {
       clearInterval(timerInterval);
       currentTimerPhase = "main";
       
       let secondsLeft = 180;
-      document.getElementById('cardTaskText').innerText = "Hra probíhá! (Úkol skryt)";
+      document.getElementById('cardTaskText').innerText = "🎭 Hra probíhá!";
       document.getElementById('cardHint').innerText = "👇 Klikni pro odhalení úkolu";
       document.getElementById('cardHint').style.display = 'block';
 
@@ -467,7 +468,7 @@
       clearInterval(timerInterval);
       currentTimerPhase = "idle";
       document.getElementById('timerText').style.display = 'none';
-      document.getElementById('cardHint').innerText = "👇 Klikni na kartu pro spuštění odpočtu";
+      document.getElementById('cardHint').innerText = "👇 Klikni na kartu pro skrytí úkolu a spuštění odpočtu";
       document.getElementById('cardHint').style.display = 'block';
     }
 
