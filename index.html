@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Párty Hra</title>
+  <title>Párty Hra s Databází</title>
   <style>
     * {
       box-sizing: border-box;
@@ -128,6 +128,10 @@
       display: block;
     }
   </style>
+
+  <!-- FIREBASE KNIHOVNY (Kompatibilní verzování) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -179,12 +183,19 @@
   </div>
 
   <script>
-    // Základní zásoba úkolů
-    const tasks = {
-      pantomima: ["Pokažený robot", "Jízda na kole v dešti", "Šéfkuchař"],
-      kresleni: ["Kravata", "Kosmonaut na Měsíci", "Větrný mlýn"],
-      mluveni: ["Vysvětli pravidla fotbalu bez použití slova 'míč'", "Popsat přípravu kávy", "Představit se jako mimozemšťan"]
+    // Konfigurace Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyAGJkxnka0SSYTkLKf-RFVlINUSqWvfGDs",
+      authDomain: "hra2-5d08e.firebaseapp.com",
+      projectId: "hra2-5d08e",
+      storageBucket: "hra2-5d08e.firebasestorage.app",
+      messagingSenderId: "663042972829",
+      appId: "1:663042972829:web:36c7164506a8e3f0e10874",
+      measurementId: "G-FL98QZ16FW"
     };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
     let currentTask = "";
     let timerInterval = null;
@@ -197,9 +208,9 @@
       resetCard();
     }
 
-    // Přidání nového úkolu
-    function addTask() {
-      const cat = document.getElementById('taskCat').value;
+    // Uložení nového úkolu přímo do Firestore
+    async function addTask() {
+      const category = document.getElementById('taskCat').value;
       const text = document.getElementById('taskInput').value.trim();
 
       if (!text) {
@@ -207,26 +218,49 @@
         return;
       }
 
-      tasks[cat].push(text);
-      document.getElementById('taskInput').value = "";
-      alert("Úkol byl úspěšně přidán!");
+      try {
+        await db.collection("tasks").add({
+          category: category,
+          text: text,
+          created_at: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        document.getElementById('taskInput').value = "";
+        alert("Úkol byl úspěšně uložen do databáze!");
+      } catch (error) {
+        alert("Chyba při ukládání: " + error.message);
+      }
     }
 
-    // Losování úkolu
-    function drawTask(category) {
-      const list = tasks[category];
-      if (!list || list.length === 0) {
-        alert("V této kategorii nejsou žádné úkoly.");
-        return;
-      }
-
+    // Načtení náhodného úkolu z databáze
+    async function drawTask(category) {
       resetCard();
-      const randomIndex = Math.floor(Math.random() * list.length);
-      currentTask = list[randomIndex];
 
-      document.getElementById('taskText').innerText = currentTask;
-      document.getElementById('cardBox').style.display = 'flex';
-      document.getElementById('hintText').innerText = "👇 Klikni pro skrytí a spuštění odpočtu";
+      try {
+        const snapshot = await db.collection("tasks")
+          .where("category", "==", category)
+          .get();
+
+        if (snapshot.empty) {
+          alert("V této kategorii zatím nejsou žádné uložené úkoly.");
+          return;
+        }
+
+        const taskList = [];
+        snapshot.forEach(doc => {
+          taskList.push(doc.data().text);
+        });
+
+        const randomIndex = Math.floor(Math.random() * taskList.length);
+        currentTask = taskList[randomIndex];
+
+        document.getElementById('taskText').innerText = currentTask;
+        document.getElementById('cardBox').style.display = 'flex';
+        document.getElementById('hintText').innerText = "👇 Klikni pro skrytí a spuštění odpočtu";
+
+      } catch (error) {
+        alert("Chyba při načítání dat: " + error.message);
+      }
     }
 
     // Kliknutí na kartu
