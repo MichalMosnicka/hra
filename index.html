@@ -1,0 +1,83 @@
+<script type="module">
+  // 1. Import základních funkcí Firebase + Firestore databáze
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { 
+    getFirestore, 
+    collection, 
+    addDoc, 
+    query, 
+    where, 
+    getDocs, 
+    serverTimestamp 
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  // 2. Tvé údaje z nového projektu (hra2-5d08e)
+  const firebaseConfig = {
+    apiKey: "AIzaSyAGJkxnka0SSYTkLKf-RFVlINUSqWvfGDs",
+    authDomain: "hra2-5d08e.firebaseapp.com",
+    projectId: "hra2-5d08e",
+    storageBucket: "hra2-5d08e.firebasestorage.app",
+    messagingSenderId: "663042972829",
+    appId: "1:663042972829:web:36c7164506a8e3f0e10874",
+    measurementId: "G-FL98QZ16FW"
+  };
+
+  // 3. Inicializace Firebase a propojení Firestore databáze
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // 4. FUNKCE PRO VYTVOŘENÍ MÍSTNOSTI
+  window.createRoom = async function() {
+    const name = document.getElementById('createName').value.trim();
+    const code = document.getElementById('createCode').value.trim();
+
+    if (!name || !code) {
+      alert("Vyplň název i kód!");
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, "rooms"), {
+        room_name: name,
+        room_code: code,
+        created_at: serverTimestamp()
+      });
+      alert(`Místnost "${name}" byla úspěšně vytvořena!`);
+      document.getElementById('createName').value = '';
+      document.getElementById('createCode').value = '';
+    } catch (e) {
+      console.error("Chyba při zápisu: ", e);
+      alert("Chyba při vytváření místnosti: " + e.message);
+    }
+  };
+
+  // 5. FUNKCE PRO PŘIPOJENÍ SE PŘES KÓD (Strict Filter)
+  window.joinRoom = async function() {
+    const code = document.getElementById('joinCode').value.trim();
+
+    if (!code) {
+      alert("Zadej kód místnosti!");
+      return;
+    }
+
+    try {
+      const q = query(collection(db, "rooms"), where("room_code", "==", code));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        alert("Místnost s tímto kódem neexistuje!");
+        document.getElementById('roomDetail').style.display = 'none';
+      } else {
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          document.getElementById('roomTitle').innerText = data.room_name;
+          document.getElementById('roomCodeDisplay').innerText = data.room_code;
+          document.getElementById('roomDetail').style.display = 'block';
+        });
+      }
+    } catch (e) {
+      console.error("Chyba při načítání: ", e);
+      alert("Chyba při připojování k místnosti: " + e.message);
+    }
+  };
+</script>
