@@ -36,6 +36,10 @@
     .my-rooms-info span { font-weight: bold; }
     .my-rooms-code { background: #007bff; color: white; padding: 3px 8px; border-radius: 4px; font-size: 14px; margin-left: 8px; }
   </style>
+
+  <!-- FIREBASE KNIHOVNY (Kompatibilní verzování) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -107,22 +111,8 @@
     <button class="btn-secondary" onclick="backToMenu()">⬅️ Zpět do menu</button>
   </div>
 
-  <!-- FIREBASE SKRIPT -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { 
-      getFirestore, 
-      collection, 
-      addDoc, 
-      query, 
-      where, 
-      getDocs, 
-      doc,
-      updateDoc,
-      onSnapshot,
-      serverTimestamp 
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-
+  <script>
+    // Konfigurace Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyAGJkxnka0SSYTkLKf-RFVlINUSqWvfGDs",
       authDomain: "hra2-5d08e.firebaseapp.com",
@@ -133,13 +123,12 @@
       measurementId: "G-FL98QZ16FW"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
     let activeRoomId = null;
     let unsubscribeListener = null;
     
-    // Stav karty a časovače
     let timerInterval = null;
     let currentTaskText = "";
     let isTimerRunning = false;
@@ -155,7 +144,6 @@
       return result;
     }
 
-    // Uložení a vykreslení místností
     function saveRoomToLocal(name, code) {
       let myRooms = JSON.parse(localStorage.getItem('myRooms')) || [];
       if (!myRooms.some(r => r.code === code)) {
@@ -165,13 +153,13 @@
       renderMyRooms();
     }
 
-    window.deleteRoomFromLocal = function(code, event) {
+    function deleteRoomFromLocal(code, event) {
       event.stopPropagation();
       let myRooms = JSON.parse(localStorage.getItem('myRooms')) || [];
       myRooms = myRooms.filter(room => room.code !== code);
       localStorage.setItem('myRooms', JSON.stringify(myRooms));
       renderMyRooms();
-    };
+    }
 
     function renderMyRooms() {
       let myRooms = JSON.parse(localStorage.getItem('myRooms')) || [];
@@ -200,7 +188,7 @@
         li.querySelector('.my-rooms-info').onclick = () => {
           document.getElementById('joinName').value = room.name;
           document.getElementById('joinCode').value = room.code;
-          window.joinRoom();
+          joinRoom();
         };
 
         listElement.appendChild(li);
@@ -210,19 +198,19 @@
     renderMyRooms();
 
     // 1. VYTVOŘENÍ MÍSTNOSTI
-    window.createRoom = async function() {
+    async function createRoom() {
       const name = document.getElementById('createName').value.trim();
       if (!name) return alert("Vyplň název místnosti!");
 
       const generatedCode = generate6DigitCode();
 
       try {
-        await addDoc(collection(db, "rooms"), {
+        await db.collection("rooms").add({
           room_name: name,
           room_code: generatedCode,
           tasks: emptyTasks,
           active_task: null,
-          created_at: serverTimestamp()
+          created_at: firebase.firestore.FieldValue.serverTimestamp()
         });
 
         saveRoomToLocal(name, generatedCode);
@@ -234,18 +222,17 @@
       } catch (e) {
         alert("Chyba při vytváření: " + e.message);
       }
-    };
+    }
 
     // 2. PŘIPOJENÍ SE
-    window.joinRoom = async function() {
+    async function joinRoom() {
       const name = document.getElementById('joinName').value.trim();
       const code = document.getElementById('joinCode').value.trim().toUpperCase();
 
       if (!name || !code) return alert("Zadej název i kód!");
 
       try {
-        const q = query(collection(db, "rooms"), where("room_code", "==", code));
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await db.collection("rooms").where("room_code", "==", code).get();
 
         if (querySnapshot.empty) {
           alert("Místnost s tímto kódem neexistuje!");
@@ -268,8 +255,8 @@
 
               if (unsubscribeListener) unsubscribeListener();
 
-              unsubscribeListener = onSnapshot(doc(db, "rooms", activeRoomId), (docSnapshot) => {
-                if (docSnapshot.exists()) {
+              unsubscribeListener = db.collection("rooms").doc(activeRoomId).onSnapshot((docSnapshot) => {
+                if (docSnapshot.exists) {
                   const data = docSnapshot.data();
                   if (data.active_task && data.active_task !== currentTaskText) {
                     currentTaskText = data.active_task;
@@ -285,62 +272,61 @@
       } catch (e) {
         alert("Chyba při připojování: " + e.message);
       }
-    };
+    }
 
     // NAVIGACE
-    window.openGame = function() {
+    function openGame() {
       document.getElementById('menuArea').style.display = 'none';
       document.getElementById('gameArea').style.display = 'block';
-    };
+    }
 
-    window.openAddTasks = function() {
+    function openAddTasks() {
       document.getElementById('menuArea').style.display = 'none';
       document.getElementById('addTaskArea').style.display = 'block';
-    };
+    }
 
-    window.backToMenu = function() {
+    function backToMenu() {
       document.getElementById('gameArea').style.display = 'none';
       document.getElementById('addTaskArea').style.display = 'none';
       document.getElementById('menuArea').style.display = 'block';
       clearInterval(timerInterval);
       document.getElementById('activeCardBox').style.display = 'none';
-    };
+    }
 
     // 3. PŘIDÁVÁNÍ ÚKOLŮ
-    window.saveTask = async function() {
+    async function saveTask() {
       const category = document.getElementById('taskCategory').value;
       const text = document.getElementById('taskText').value.trim();
 
       if (!text) return alert("Zadej text úkolu!");
 
       try {
-        const roomRef = doc(db, "rooms", activeRoomId);
-        const code = document.getElementById('menuRoomCode').innerText;
-        const docSnap = await getDocs(query(collection(db, "rooms"), where("room_code", "==", code)));
+        const roomRef = db.collection("rooms").doc(activeRoomId);
+        const docSnap = await roomRef.get();
         
-        docSnap.forEach(async (d) => {
-          let currentTasks = d.data().tasks || emptyTasks;
+        if (docSnap.exists) {
+          let currentTasks = docSnap.data().tasks || emptyTasks;
           if (!currentTasks[category]) currentTasks[category] = [];
           currentTasks[category].push(text);
 
-          await updateDoc(roomRef, { tasks: currentTasks });
+          await roomRef.update({ tasks: currentTasks });
           alert("Úkol úspěšně přidán!");
           document.getElementById('taskText').value = '';
-        });
+        }
       } catch (e) {
         alert("Chyba při ukládání: " + e.message);
       }
-    };
+    }
 
     // 4. VYBRÁNÍ KATEGORIE
-    window.handleCategoryClick = async function(category) {
+    async function handleCategoryClick(category) {
       if (!activeRoomId) return;
 
-      const code = document.getElementById('menuRoomCode').innerText;
-      const roomSnap = await getDocs(query(collection(db, "rooms"), where("room_code", "==", code)));
+      const roomRef = db.collection("rooms").doc(activeRoomId);
+      const docSnap = await roomRef.get();
       
-      roomSnap.forEach(async (d) => {
-        const tasks = d.data().tasks || emptyTasks;
+      if (docSnap.exists) {
+        const tasks = docSnap.data().tasks || emptyTasks;
         const categoryTasks = tasks[category] || [];
 
         if (categoryTasks.length === 0) {
@@ -349,22 +335,19 @@
         }
 
         const randomTask = categoryTasks[Math.floor(Math.random() * categoryTasks.length)];
-        const roomRef = doc(db, "rooms", activeRoomId);
+        await roomRef.update({ active_task: randomTask });
+      }
+    }
 
-        await updateDoc(roomRef, { active_task: randomTask });
-      });
-    };
-
-    // KLIKNUTÍ NA KARTU S ÚKOLEM
-    window.handleCardClick = function() {
+    // KLIKNUTÍ NA KARTU
+    function handleCardClick() {
       if (!isTimerRunning) {
         start10sCountdown();
       } else {
         resetCardToShownState();
       }
-    };
+    }
 
-    // RESET KARTY DO ZOBRAZENÉHO STAVU
     function resetCardToShownState() {
       clearInterval(timerInterval);
       isTimerRunning = false;
@@ -375,54 +358,27 @@
       document.getElementById('cardHint').innerText = "👇 Klikni pro skrytí úkolu a spuštění odpočtu";
     }
 
-    // SPŮŠTĚNÍ 10 SEKUNDOVÉHO ODPOČTU
     function start10sCountdown() {
       clearInterval(timerInterval);
       isTimerRunning = true;
 
       let sec = 10;
       document.getElementById('cardTaskText').innerText = "⏳ Připrav se...";
-      document.getElementById('cardHint').innerText = "👇 Klikni pro předčasné odkrytí úkolu";
-      
-      const timerText = document.getElementById('timerText');
-      timerText.style.display = 'block';
-      timerText.innerText = "00:10";
+      document.getElementById('cardHint').innerText = "👇 Klikni pro předKdyž obrazovka nereaguje na klikání, obvykle jde o zamrznutou aplikaci, zásek systému nebo problém s perifériemi.
 
-      timerInterval = setInterval(() => {
-        sec--;
-        timerText.innerText = `00:${sec < 10 ? '0' : ''}${sec}`;
+**Provedení rychlé opravy:**
 
-        if (sec <= 0) {
-          clearInterval(timerInterval);
-          start3minCountdown();
-        }
-      }, 1000);
-    }
+1. **Restartujte grafické ovladače (Windows):**
+   * Stiskněte klávesovou zkratku **Win + Ctrl + Shift + B**. Obrazovka na sekundu blikne a ozve se pípnutí. Pokud šlo o zásek grafiky, ovládání se obnoví.
+2. **Ukončete zaseknutou aplikaci přes Správce úloh:**
+   * Stiskněte **Ctrl + Shift + Esc**.
+   * Pokud Správce úloh vyskočí, pomocí šipek na klávesnici a klávesy **Delete** (nebo **Enter**) ukončete aplikaci, která nereaguje.
+3. **Povolte zamrzlé rozhraní (Windows Explorer):**
+   * Ve Správci úloh stiskněte **Alt + N** (Nová úloha), napište `explorer.exe` a stiskněte **Enter**.
+4. **Ověřte periferie (myš a touchpad):**
+   * Pokud používáte bezdrátovou myš, odpojte a znovu zapojte USB přijímač nebo zkontrolujte baterii.
+   * U notebooku zkontrolujte, zda jste si náhodou nevypnuli touchpad klávesovou zkratkou (často **Fn + F5 / F7 / F9**).
+5. **Tvrdý restart (krajní řešení):**
+   * Pokud nic z výše uvedeného nefunguje a klávesnice nereaguje, podržte zapínací tlačítko počítače/notebooku po dobu **5–10 sekund**, dokud se zařízení úplně nevypne, a poté jej znovu zapněte.
 
-    // SPUŠTĚNÍ 3MINUTOVÉHO ODPOČTU
-    function start3minCountdown() {
-      let sec = 180;
-      document.getElementById('cardTaskText').innerText = "🎭 Hra probíhá!";
-      
-      const timerText = document.getElementById('timerText');
-
-      const updateTimerDisplay = () => {
-        const m = Math.floor(sec / 60);
-        const s = sec % 60;
-        timerText.innerText = `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
-      };
-
-      updateTimerDisplay();
-
-      timerInterval = setInterval(() => {
-        sec--;
-        updateTimerDisplay();
-
-        if (sec <= 0) {
-          resetCardToShownState();
-        }
-      }, 1000);
-    }
-  </script>
-</body>
-</html>
+<FollowUp label="Pomohla některá ze zkratek, nebo systém vůbec nereaguje ani na klávesnici?" query="Pořád to nefunguje a počítač nereaguje ani na klávesnici, co mám dělat dál?" />
