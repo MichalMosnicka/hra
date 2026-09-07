@@ -16,6 +16,8 @@
     .btn-secondary:hover { background-color: #5a6268; }
     .btn-success { background-color: #28a745; }
     .btn-success:hover { background-color: #218838; }
+    .btn-danger { background-color: #dc3545; border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; width: auto; margin: 0; font-size: 14px; }
+    .btn-danger:hover { background-color: #bd2130; }
     
     .generated-code { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 10px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 15px; display: none; }
     
@@ -23,14 +25,15 @@
     .cards-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 20px 0; }
     .game-card-btn { background: #007bff; color: white; border-radius: 8px; padding: 20px 10px; text-align: center; font-size: 16px; font-weight: bold; border: none; cursor: pointer; }
     
-    .active-card { background: #28a745; color: white; border-radius: 12px; padding: 20px; text-align: center; font-size: 22px; font-weight: bold; min-height: 100px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2); margin: 20px 0; flex-direction: column; }
-    .timer-display { font-size: 32px; font-weight: bold; color: #dc3545; margin-top: 10px; }
+    .active-card { background: #28a745; color: white; border-radius: 12px; padding: 20px; text-align: center; font-size: 22px; font-weight: bold; min-height: 120px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2); margin: 20px 0; flex-direction: column; cursor: pointer; }
+    .timer-display { font-size: 32px; font-weight: bold; color: #fff; margin-top: 10px; background: rgba(0,0,0,0.2); padding: 5px 15px; border-radius: 6px; }
 
     /* Seznam uložených místností */
     .my-rooms-list { list-style: none; padding: 0; margin: 0; }
-    .my-rooms-item { background: #f8f9fa; border: 1px solid #e9ecef; padding: 10px 15px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-    .my-rooms-item:hover { background: #e2e6ea; }
-    .my-rooms-code { background: #007bff; color: white; padding: 3px 8px; border-radius: 4px; font-size: 14px; }
+    .my-rooms-item { background: #f8f9fa; border: 1px solid #e9ecef; padding: 10px 15px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .my-rooms-info { cursor: pointer; flex-grow: 1; }
+    .my-rooms-info span { font-weight: bold; }
+    .my-rooms-code { background: #007bff; color: white; padding: 3px 8px; border-radius: 4px; font-size: 14px; margin-left: 8px; }
   </style>
 </head>
 <body>
@@ -79,9 +82,9 @@
     </div>
 
     <!-- Zobrazení vybrané karty -->
-    <div id="activeCardBox" class="active-card" style="display: none;">
+    <div id="activeCardBox" class="active-card" style="display: none;" onclick="toggleTimerByClick()">
       <div id="cardTaskText"></div>
-      <div id="timerText" class="timer-display" style="display: none;">03:00</div>
+      <div id="timerText" class="timer-display" style="display: none;"></div>
     </div>
 
     <button class="btn-secondary" onclick="backToMenu()">⬅️ Zpět do menu</button>
@@ -136,15 +139,14 @@
     
     // Časovač
     let timerInterval = null;
-    let timerSeconds = 180;
-    let isTimerRunning = false;
-    let currentSelectedCategory = null;
+    let currentTaskText = "";
+    let currentTimerPhase = "idle"; // "prep" (10s), "main" (3m), nebo "idle"
 
-    // Výchozí úkoly
-    const defaultTasks = {
-      pantomima: ["Pokažený robot", "Zpívající tučňák", "Ztracený turista"],
-      kresleni: ["Mrakodrap v bouřce", "Létající talíř", "Akvárium"],
-      mluveni: ["Popsat film bez názvu", "Vysvětlit co je gravitace", "Řekni 3 vtipy"]
+    // Prázdný výchozí obsah karet
+    const emptyTasks = {
+      pantomima: [],
+      kresleni: [],
+      mluveni: []
     };
 
     function generate6DigitCode() {
@@ -156,12 +158,23 @@
       return result;
     }
 
+    // Uložení, smazení a načtení místností v prohlížeči
     function saveRoomToLocal(name, code) {
       let myRooms = JSON.parse(localStorage.getItem('myRooms')) || [];
-      myRooms.push({ name, code });
-      localStorage.setItem('myRooms', JSON.stringify(myRooms));
+      if (!myRooms.some(r => r.code === code)) {
+        myRooms.push({ name, code });
+        localStorage.setItem('myRooms', JSON.stringify(myRooms));
+      }
       renderMyRooms();
     }
+
+    window.deleteRoomFromLocal = function(code, event) {
+      event.stopPropagation(); // Zamezí automatickému kliknutí na připojení
+      let myRooms = JSON.parse(localStorage.getItem('myRooms')) || [];
+      myRooms = myRooms.filter(room => room.code !== code);
+      localStorage.setItem('myRooms', JSON.stringify(myRooms));
+      renderMyRooms();
+    };
 
     function renderMyRooms() {
       let myRooms = JSON.parse(localStorage.getItem('myRooms')) || [];
@@ -179,9 +192,15 @@
       myRooms.forEach(room => {
         const li = document.createElement('li');
         li.className = 'my-rooms-item';
-        li.innerHTML = `<span>${room.name}</span> <span class="my-rooms-code">${room.code}</span>`;
+        li.innerHTML = `
+          <div class="my-rooms-info">
+            <span>${room.name}</span> 
+            <span class="my-rooms-code">${room.code}</span>
+          </div>
+          <button class="btn-danger" onclick="deleteRoomFromLocal('${room.code}', event)">❌</button>
+        `;
         
-        li.onclick = () => {
+        li.querySelector('.my-rooms-info').onclick = () => {
           document.getElementById('joinName').value = room.name;
           document.getElementById('joinCode').value = room.code;
           window.joinRoom();
@@ -204,8 +223,7 @@
         await addDoc(collection(db, "rooms"), {
           room_name: name,
           room_code: generatedCode,
-          tasks: defaultTasks,
-          active_category: null,
+          tasks: emptyTasks,
           active_task: null,
           timer_status: "stopped",
           created_at: serverTimestamp()
@@ -232,43 +250,50 @@
       try {
         const q = query(
           collection(db, "rooms"), 
-          where("room_name", "==", name),
           where("room_code", "==", code)
         );
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {
-          alert("Místnost nenalezena!");
+          alert("Místnost s tímto kódem neexistuje!");
         } else {
+          let found = false;
           querySnapshot.forEach((docSnap) => {
-            activeRoomId = docSnap.id;
             const data = docSnap.data();
 
-            document.getElementById('menuRoomTitle').innerText = data.room_name;
-            document.getElementById('menuRoomCode').innerText = data.room_code;
-            
-            document.getElementById('createCard').style.display = 'none';
-            document.getElementById('joinCard').style.display = 'none';
-            document.getElementById('myRoomsCard').style.display = 'none';
-            document.getElementById('menuArea').style.display = 'block';
+            if (data.room_name.toLowerCase() === name.toLowerCase()) {
+              found = true;
+              activeRoomId = docSnap.id;
 
-            if (unsubscribeListener) unsubscribeListener();
+              document.getElementById('menuRoomTitle').innerText = data.room_name;
+              document.getElementById('menuRoomCode').innerText = data.room_code;
+              
+              document.getElementById('createCard').style.display = 'none';
+              document.getElementById('joinCard').style.display = 'none';
+              document.getElementById('myRoomsCard').style.display = 'none';
+              document.getElementById('menuArea').style.display = 'block';
 
-            // POSLUCHAČ PRO REÁLNÝ ČAS
-            unsubscribeListener = onSnapshot(doc(db, "rooms", activeRoomId), (docSnapshot) => {
-              if (docSnapshot.exists()) {
-                const updatedData = docSnapshot.data();
-                handleRealtimeUpdate(updatedData);
-              }
-            });
+              if (unsubscribeListener) unsubscribeListener();
+
+              // POSLUCHAČ PRO REÁLNÝ ČAS
+              unsubscribeListener = onSnapshot(doc(db, "rooms", activeRoomId), (docSnapshot) => {
+                if (docSnapshot.exists()) {
+                  handleRealtimeUpdate(docSnapshot.data());
+                }
+              });
+            }
           });
+
+          if (!found) {
+            alert("Kód souhlasí, ale název místnosti nesedí!");
+          }
         }
       } catch (e) {
         alert("Chyba při připojování: " + e.message);
       }
     };
 
-    // NAVIGACE A MENU
+    // NAVIGACE
     window.openGame = function() {
       document.getElementById('menuArea').style.display = 'none';
       document.getElementById('gameArea').style.display = 'block';
@@ -286,7 +311,7 @@
       resetTimerLocal();
     };
 
-    // 3. PŘIDÁVÁNÍ NOVÉHO ÚKOLU
+    // 3. PŘIDÁVÁNÍ ÚKOLŮ
     window.saveTask = async function() {
       const category = document.getElementById('taskCategory').value;
       const text = document.getElementById('taskText').value.trim();
@@ -295,16 +320,17 @@
 
       try {
         const roomRef = doc(db, "rooms", activeRoomId);
-        const docSnap = await getDocs(query(collection(db, "rooms"), where("room_code", "==", document.getElementById('menuRoomCode').innerText)));
+        const code = document.getElementById('menuRoomCode').innerText;
+        const docSnap = await getDocs(query(collection(db, "rooms"), where("room_code", "==", code)));
         
         docSnap.forEach(async (d) => {
-          let currentTasks = d.data().tasks || defaultTasks;
+          let currentTasks = d.data().tasks || emptyTasks;
           if (!currentTasks[category]) currentTasks[category] = [];
           
           currentTasks[category].push(text);
 
           await updateDoc(roomRef, { tasks: currentTasks });
-          alert("Úkol byl úspěšně přidán!");
+          alert("Úkol úspěšně přidán!");
           document.getElementById('taskText').value = '';
         });
       } catch (e) {
@@ -312,95 +338,126 @@
       }
     };
 
-    // 4. LOGIKA KLIKÁNÍ NA KARTY A ČASOVAČ
+    // 4. VYBĚR KATEGORIE A SPUŠTĚNÍ ČASOVAČE
     window.handleCategoryClick = async function(category) {
       if (!activeRoomId) return;
 
-      const roomRef = doc(db, "rooms", activeRoomId);
+      const code = document.getElementById('menuRoomCode').innerText;
+      const roomSnap = await getDocs(query(collection(db, "rooms"), where("room_code", "==", code)));
+      
+      roomSnap.forEach(async (d) => {
+        const tasks = d.data().tasks || emptyTasks;
+        const categoryTasks = tasks[category] || [];
 
-      // Pokud klikne na STEJNOU kategorii, která už je zobrazena -> Spustí / Zastaví časovač
-      if (currentSelectedCategory === category) {
-        if (!isTimerRunning) {
-          await updateDoc(roomRef, { timer_status: "running" });
-        } else {
-          await updateDoc(roomRef, { timer_status: "stopped" });
+        if (categoryTasks.length === 0) {
+          alert("Tato kategorie ještě nemá žádné úkoly! Nejprve je přidej v menu.");
+          return;
         }
-      } else {
-        // První kliknutí na kategorii -> Zobrazí náhodný úkol
-        const roomSnap = await getDocs(query(collection(db, "rooms"), where("room_code", "==", document.getElementById('menuRoomCode').innerText)));
-        
-        roomSnap.forEach(async (d) => {
-          const tasks = d.data().tasks || defaultTasks;
-          const categoryTasks = tasks[category] || defaultTasks[category];
-          const randomTask = categoryTasks[Math.floor(Math.random() * categoryTasks.length)];
 
-          await updateDoc(roomRef, {
-            active_category: category,
-            active_task: randomTask,
-            timer_status: "ready"
-          });
+        const randomTask = categoryTasks[Math.floor(Math.random() * categoryTasks.length)];
+        const roomRef = doc(db, "rooms", activeRoomId);
+
+        await updateDoc(roomRef, {
+          active_task: randomTask,
+          timer_status: "prep" // Zahájí 10s odpočet
         });
+      });
+    };
+
+    // Zrušení 3minutového odpočtu kliknutím na kartu
+    window.toggleTimerByClick = async function() {
+      if (currentTimerPhase === "main") {
+        const roomRef = doc(db, "rooms", activeRoomId);
+        await updateDoc(roomRef, { timer_status: "stopped" });
       }
     };
 
-    // FUNKCE PRO SYNCHRONIZACI DÁT
+    // SYNCHRONIZACE S FIREBASE
     function handleRealtimeUpdate(data) {
       const activeCardBox = document.getElementById('activeCardBox');
       const cardTaskText = document.getElementById('cardTaskText');
-      const timerText = document.getElementById('timerText');
-
-      currentSelectedCategory = data.active_category;
 
       if (data.active_task) {
         activeCardBox.style.display = 'flex';
-        cardTaskText.innerText = data.active_task;
-        timerText.style.display = 'block';
+        currentTaskText = data.active_task;
       } else {
         activeCardBox.style.display = 'none';
-        timerText.style.display = 'none';
+        return;
       }
 
-      // Stav časovače
-      if (data.timer_status === "running") {
-        startTimerLocal();
+      if (data.timer_status === "prep") {
+        startPrepTimer();
+      } else if (data.timer_status === "main") {
+        startMainTimer();
       } else {
         stopTimerLocal();
+        cardTaskText.innerText = currentTaskText; // Zobrazí text úkolu po skončení odpočtu
       }
     }
 
-    // LOKÁLNÍ ČASOVAČ (3 MINUTY)
-    function startTimerLocal() {
-      if (isTimerRunning) return;
-      isTimerRunning = true;
+    // LOKÁLNÍ PŘÍPRAVNÝ ODPOČET (10 SEKUND)
+    function startPrepTimer() {
+      clearInterval(timerInterval);
+      currentTimerPhase = "prep";
+      
+      let secondsLeft = 10;
+      document.getElementById('cardTaskText').innerText = "Připrav se...";
+      const timerText = document.getElementById('timerText');
+      timerText.style.display = 'block';
+      timerText.innerText = `00:${secondsLeft.toString().padStart(2, '0')}`;
 
-      timerInterval = setInterval(() => {
-        timerSeconds--;
-        updateTimerDisplay();
+      timerInterval = setInterval(async () => {
+        secondsLeft--;
+        timerText.innerText = `00:${secondsLeft.toString().padStart(2, '0')}`;
 
-        if (timerSeconds <= 0) {
-          stopTimerLocal();
-          alert("⏱️ Čas vypršel!");
+        if (secondsLeft <= 0) {
+          clearInterval(timerInterval);
+          // Po 10 sekundách přepne na 3minutový odpočet
+          const roomRef = doc(db, "rooms", activeRoomId);
+          await updateDoc(roomRef, { timer_status: "main" });
+        }
+      }, 1000);
+    }
+
+    // LOKÁLNÍ HLAVNÍ ODPOČET (3 MINUTY)
+    function startMainTimer() {
+      clearInterval(timerInterval);
+      currentTimerPhase = "main";
+      
+      let secondsLeft = 180;
+      document.getElementById('cardTaskText').innerText = "Hra probíhá! (Úkol skryt)";
+      const timerText = document.getElementById('timerText');
+      timerText.style.display = 'block';
+
+      const updateDisplay = () => {
+        const m = Math.floor(secondsLeft / 60);
+        const s = secondsLeft % 60;
+        timerText.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+      };
+
+      updateDisplay();
+
+      timerInterval = setInterval(async () => {
+        secondsLeft--;
+        updateDisplay();
+
+        if (secondsLeft <= 0) {
+          clearInterval(timerInterval);
+          const roomRef = doc(db, "rooms", activeRoomId);
+          await updateDoc(roomRef, { timer_status: "stopped" });
         }
       }, 1000);
     }
 
     function stopTimerLocal() {
       clearInterval(timerInterval);
-      isTimerRunning = false;
-      timerSeconds = 180;
-      updateTimerDisplay();
+      currentTimerPhase = "idle";
+      document.getElementById('timerText').style.display = 'none';
     }
 
     function resetTimerLocal() {
       stopTimerLocal();
       document.getElementById('activeCardBox').style.display = 'none';
-    }
-
-    function updateTimerDisplay() {
-      const minutes = Math.floor(timerSeconds / 60);
-      const seconds = timerSeconds % 60;
-      document.getElementById('timerText').innerText = 
-        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
   </script>
 </body>
