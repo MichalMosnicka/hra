@@ -11,7 +11,8 @@
     input { border: 1px solid #ccc; font-size: 16px; }
     button { background-color: #007bff; color: white; border: none; font-size: 16px; font-weight: bold; cursor: pointer; }
     button:hover { background-color: #0056b3; }
-    .room-info { background: #e9ecef; border-left: 5px solid #007bff; padding: 15px; border-radius: 5px; margin-top: 15px; }
+    .room-info { background: #e9ecef; border-left: 5px solid #28a745; padding: 15px; border-radius: 5px; margin-top: 15px; }
+    .generated-code { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 10px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 15px; display: none; }
   </style>
 </head>
 <body>
@@ -22,14 +23,17 @@
   <div class="card">
     <h3>Vytvořit novou místnost</h3>
     <input type="text" id="createName" placeholder="Název místnosti (např. Páteční párty)">
-    <input type="text" id="createCode" placeholder="Unikátní kód (např. 1234)">
     <button onclick="createRoom()">Vytvořit Místnost</button>
+    
+    <!-- Zobrazení vygenerovaného kódu po vytvoření -->
+    <div id="createdCodeBox" class="generated-code"></div>
   </div>
 
-  <!-- ZÁLOŽKA: Připojit se přes kód -->
+  <!-- ZÁLOŽKA: Připojit se přes název a kód -->
   <div class="card">
     <h3>Připojit se k místnosti</h3>
-    <input type="text" id="joinCode" placeholder="Zadej kód místnosti">
+    <input type="text" id="joinName" placeholder="Přesný název místnosti">
+    <input type="text" id="joinCode" placeholder="6místný kód místnosti">
     <button onclick="joinRoom()">Vstoupit do Místnosti</button>
   </div>
 
@@ -53,7 +57,7 @@
       serverTimestamp 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // Tvá konfigurace z projektu hra2-5d08e
+    // Configuration
     const firebaseConfig = {
       apiKey: "AIzaSyAGJkxnka0SSYTkLKf-RFVlINUSqWvfGDs",
       authDomain: "hra2-5d08e.firebaseapp.com",
@@ -68,48 +72,71 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Funkce pro vytvoření místnosti
+    // Pomocná funkce pro generování náhodného 6místného kódu
+    function generate6DigitCode() {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let result = '';
+      for (let i = 0; i < 6; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    }
+
+    // 1. FUNKCE PRO VYTVOŘENÍ MÍSTNOSTI (s generovaným kódem)
     window.createRoom = async function() {
       const name = document.getElementById('createName').value.trim();
-      const code = document.getElementById('createCode').value.trim();
 
-      if (!name || !code) {
-        alert("Vyplň název i kód!");
+      if (!name) {
+        alert("Vyplň název místnosti!");
         return;
       }
+
+      const generatedCode = generate6DigitCode();
 
       try {
         await addDoc(collection(db, "rooms"), {
           room_name: name,
-          room_code: code,
+          room_code: generatedCode,
           created_at: serverTimestamp()
         });
-        alert(`Místnost "${name}" byla úspěšně vytvořena!`);
+
+        // Zobrazíme zakladateli vygenerovaný kód
+        const codeBox = document.getElementById('createdCodeBox');
+        codeBox.innerText = `Místnost vytvořena! Váš kód: ${generatedCode}`;
+        codeBox.style.display = 'block';
+
+        // Vyčistíme pole
         document.getElementById('createName').value = '';
-        document.getElementById('createCode').value = '';
       } catch (e) {
         console.error("Chyba při zápisu: ", e);
         alert("Chyba při vytváření místnosti: " + e.message);
       }
     };
 
-    // Funkce pro připojení k místnosti přes kód
+    // 2. FUNKCE PRO PŘIPOJENÍ (Vyžaduje Název I Kód)
     window.joinRoom = async function() {
-      const code = document.getElementById('joinCode').value.trim();
+      const name = document.getElementById('joinName').value.trim();
+      const code = document.getElementById('joinCode').value.trim().toUpperCase();
 
-      if (!code) {
-        alert("Zadej kód místnosti!");
+      if (!name || !code) {
+        alert("Zadej název místnosti i 6místný kód!");
         return;
       }
 
       try {
-        const q = query(collection(db, "rooms"), where("room_code", "==", code));
+        // Hledáme pouze dokument, kde se shoduje room_name I room_code
+        const q = query(
+          collection(db, "rooms"), 
+          where("room_name", "==", name),
+          where("room_code", "==", code)
+        );
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {
-          alert("Místnost s tímto kódem neexistuje!");
+          alert("Místnost s tímto názvem a kódem neexistuje!");
           document.getElementById('roomDetail').style.display = 'none';
         } else {
+          // Místnost nalezena
           querySnapshot.forEach((doc) => {
             const data = doc.data();
             document.getElementById('roomTitle').innerText = data.room_name;
