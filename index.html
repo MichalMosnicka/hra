@@ -29,9 +29,12 @@
 
     /* Seznam uložených místností */
     .my-rooms-list { list-style: none; padding: 0; margin: 0; }
-    .my-rooms-item { background: #f8f9fa; border: 1px solid #e9ecef; padding: 10px 15px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+    .my-rooms-item { background: #f8f9fa; border: 1px solid #e9ecef; padding: 10px 15px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .my-rooms-info { cursor: pointer; flex-grow: 1; display: flex; justify-content: space-between; align-items: center; margin-right: 10px; }
     .my-rooms-item:hover { background: #e2e6ea; }
     .my-rooms-code { background: #007bff; color: white; padding: 3px 8px; border-radius: 4px; font-size: 14px; }
+    .btn-delete-room { background: #dc3545; color: white; border: none; padding: 6px 10px; border-radius: 4px; font-size: 14px; cursor: pointer; width: auto; margin: 0; }
+    .btn-delete-room:hover { background: #c82333; }
   </style>
 </head>
 <body>
@@ -63,6 +66,7 @@
 
     <button class="btn-success" onclick="openGame()">▶️ Hrát</button>
     <button class="btn-secondary" onclick="openAddTasks()">➕ Přidat úkoly</button>
+    <button class="btn-secondary" onclick="goToHomePage()">🏠 Hlavní stránka</button>
   </div>
 
   <div class="card" id="gameArea" style="display: none;">
@@ -86,6 +90,7 @@
     </div>
 
     <button class="btn-secondary" onclick="backToMenu()">⬅️ Zpět do menu</button>
+    <button class="btn-secondary" onclick="goToHomePage()">🏠 Hlavní stránka</button>
   </div>
 
   <div class="card" id="addTaskArea" style="display: none;">
@@ -154,6 +159,14 @@
       renderMyRooms();
     }
 
+    // Odstranění místnosti z paměti
+    window.deleteRoomFromLocal = function(code) {
+      let myRooms = JSON.parse(localStorage.getItem('myRooms')) || [];
+      myRooms = myRooms.filter(room => room.code !== code);
+      localStorage.setItem('myRooms', JSON.stringify(myRooms));
+      renderMyRooms();
+    };
+
     function renderMyRooms() {
       let myRooms = JSON.parse(localStorage.getItem('myRooms')) || [];
       const listElement = document.getElementById('myRoomsList');
@@ -170,12 +183,26 @@
       myRooms.forEach(room => {
         const li = document.createElement('li');
         li.className = 'my-rooms-item';
-        li.innerHTML = `<span>${room.name}</span> <span class="my-rooms-code">${room.code}</span>`;
         
-        li.onclick = () => {
+        li.innerHTML = `
+          <div class="my-rooms-info">
+            <span>${room.name}</span>
+            <span class="my-rooms-code">${room.code}</span>
+          </div>
+          <button class="btn-delete-room" title="Odstranit ze známých">❌</button>
+        `;
+        
+        // Klik na název/kód pro připojení
+        li.querySelector('.my-rooms-info').onclick = () => {
           document.getElementById('joinName').value = room.name;
           document.getElementById('joinCode').value = room.code;
           window.joinRoom();
+        };
+
+        // Klik na tlačítko odstranit
+        li.querySelector('.btn-delete-room').onclick = (e) => {
+          e.stopPropagation();
+          window.deleteRoomFromLocal(room.code);
         };
 
         listElement.appendChild(li);
@@ -276,6 +303,21 @@
       resetTimerLocal();
     };
 
+    // Návrat na hlavní stránku se všemi místnostmi
+    window.goToHomePage = function() {
+      if (unsubscribeListener) unsubscribeListener();
+      activeRoomId = null;
+      resetTimerLocal();
+
+      document.getElementById('menuArea').style.display = 'none';
+      document.getElementById('gameArea').style.display = 'none';
+      document.getElementById('addTaskArea').style.display = 'none';
+
+      document.getElementById('createCard').style.display = 'block';
+      document.getElementById('joinCard').style.display = 'block';
+      renderMyRooms();
+    };
+
     // 3. PŘIDÁVÁNÍ NOVÉHO ÚKOLU
     window.saveTask = async function() {
       const category = document.getElementById('taskCategory').value;
@@ -302,7 +344,7 @@
       }
     };
 
-    // 4. KLIKNUTÍ NA KATEGORII (NAČTENÍ Z DATABÁZE)
+    // 4. KLIKNUTÍ NA KATEGORII
     window.handleCategoryClick = async function(category) {
       if (!activeRoomId) return;
 
@@ -355,7 +397,7 @@
         return;
       }
 
-      // Stav 1: Příprava (Úkol je SKRYTÝ)
+      // Stav 1: Příprava
       if (data.timer_status === "prep") {
         cardTaskText.style.display = 'none';
         timerContainer.style.display = 'flex';
@@ -366,7 +408,7 @@
           await updateDoc(roomRef, { timer_status: "guessing" });
         });
       } 
-      // Stav 2: Hádání (Úkol je SKRYTÝ)
+      // Stav 2: Hádání
       else if (data.timer_status === "guessing") {
         cardTaskText.style.display = 'none';
         timerContainer.style.display = 'flex';
@@ -377,7 +419,7 @@
           await updateDoc(roomRef, { timer_status: "stopped" });
         });
       } 
-      // Stav 3: Zastaveno / Konec (Úkol se ZOBRAZÍ)
+      // Stav 3: Zastaveno / Konec
       else {
         stopTimerLocal();
         timerContainer.style.display = 'none';
